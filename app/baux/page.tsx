@@ -257,7 +257,7 @@ function BailModal({ onClose, onSave, baux, biens, locataires, bailToEdit }: Bai
         typeBail: form.typeBail,
         typeIndice: form.typeIndice,
         indiceTrimestreRef: form.indiceTrimestreRef,
-        indiceAnneeRef: Number(form.indiceAnneeRef),
+        indiceAnneeRef: String(form.indiceAnneeRef),
         dateEntree: form.dateEntree,
         dateSortie: form.dateSortie || "",
         loyer: Number(form.loyer),
