@@ -48,9 +48,13 @@ interface Bail {
     depotGarantie: number;
     periodicite: string;
     dateSignature: string;
-    statut: "actif" | "termine" | "resilie";
+    statut: BailStatus;
     observations: string;
   }  
+
+enum BailStatus {
+    actif, termine, resilie
+}
 
 // ============================================================
 // DONNÉES MOCK
@@ -107,7 +111,7 @@ const BAUX_MOCK: Bail[] = [
     depotGarantie: 1700,
     periodicite: "Mensuelle",
     dateSignature: "2023-12-15",
-    statut: "actif",
+    statut: BailStatus.actif,
     observations: "",
 typeIndice: "IRL",
 indiceTrimestreRef: "1T",
@@ -126,7 +130,7 @@ indiceAnneeRef: "2024",
     depotGarantie: 550,
     periodicite: "Mensuelle",
     dateSignature: "2024-02-20",
-    statut: "actif",
+    statut: BailStatus.actif,
     observations: "",
 typeIndice: "IRL",
 indiceTrimestreRef: "1T",
@@ -145,7 +149,7 @@ indiceAnneeRef: "2024",
     depotGarantie: 2400,
     periodicite: "Mensuelle",
     dateSignature: "2022-12-15",
-    statut: "termine",
+    statut: BailStatus.termine,
     observations: "Bail terminé normalement",
 typeIndice: "IRL",
 indiceTrimestreRef: "1T",
@@ -245,9 +249,9 @@ function BailModal({ onClose, onSave, baux, biens, locataires, bailToEdit }: Bai
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const locataire = locataires.find((l) => l.id === form.locataireId);
-    let statutAuto: Bail["statut"] = "actif";
+    let statutAuto: Bail["statut"] = BailStatus.actif;
     if (locataire?.statut === "sorti" || locataire?.statut === "inactif") {
-      statutAuto = "termine";
+      statutAuto = BailStatus.termine;
     }
     const newBail: Bail = {
         id: bailToEdit?.id || `bail-${Date.now()}`,
@@ -614,7 +618,7 @@ interface BailDetailProps {
 function BailDetail({ bail, biens, locataires, onClose, onEdit }: BailDetailProps) {
   const bien = getBienById(bail.bienId, biens);
   const locataire = getLocataireById(bail.locataireId, locataires);
-  const statutConfig = getStatutConfig(bail.statut);
+  const statutConfig = getStatutConfig(bail.statut.toString());
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -753,10 +757,10 @@ export default function BauxPage() {
   const [filterStatut, setFilterStatut] = useState("");
   const [filterType, setFilterType] = useState("");
 
-  const nbActifs = baux.filter((b) => b.statut === "actif").length;
-  const nbTermines = baux.filter((b) => b.statut === "termine").length;
-  const nbResilies = baux.filter((b) => b.statut === "resilie").length;
-  const loyerTotal = baux.filter((b) => b.statut === "actif").reduce((sum, b) => sum + b.loyer + b.charges, 0);
+  const nbActifs = baux.filter((b) => b.statut === BailStatus.actif).length;
+  const nbTermines = baux.filter((b) => b.statut === BailStatus.termine).length;
+  const nbResilies = baux.filter((b) => b.statut === BailStatus.resilie).length;
+  const loyerTotal = baux.filter((b) => b.statut === BailStatus.actif).reduce((sum, b) => sum + b.loyer + b.charges, 0);
 
   const biauxFiltres = baux.filter((bail) => {
     const bien = getBienById(bail.bienId, biens);
@@ -769,7 +773,7 @@ export default function BauxPage() {
       (bien?.ville.toLowerCase().includes(q) ?? false) ||
       (locataire?.nom.toLowerCase().includes(q) ?? false) ||
       (locataire?.prenom.toLowerCase().includes(q) ?? false);
-    const matchStatut = !filterStatut || bail.statut === filterStatut;
+    const matchStatut = !filterStatut || bail.statut.toString() === filterStatut;
     const matchType = !filterType || bail.typeBail === filterType;
     return matchSearch && matchStatut && matchType;
   });
@@ -881,7 +885,7 @@ export default function BauxPage() {
             {biauxFiltres.map((bail) => {
               const bien = getBienById(bail.bienId, biens);
               const locataire = getLocataireById(bail.locataireId, locataires);
-              const statutConfig = getStatutConfig(bail.statut);
+              const statutConfig = getStatutConfig(bail.statut.toString());
 
               return (
                 <div
