@@ -7,10 +7,11 @@ import { usePathname } from 'next/navigation'
 import { Menu, X, LayoutDashboard, Building2, Users, FileText, Receipt, FileCheck, Shield, UserCircle, Settings, Zap, TrendingUp, FileSearch, Home, CreditCard } from 'lucide-react'
 
 const mainLinks = [
-  { href: '/',                  label: 'Dashboard',                  icon: LayoutDashboard },
+  { href: '/dashboard',                  label: 'Dashboard',                  icon: LayoutDashboard },
   { href: '/biens',             label: 'Mes biens',                  icon: Building2 },
   { href: '/locataires',        label: 'Locataires',                 icon: Users },
   { href: '/baux',              label: 'Baux',                       icon: FileText },
+  { href: '/assurance',         label: 'Assurance',                  icon: Shield },
   { href: '/depot-garantie',    label: 'Dépôts de garantie',         icon: Shield },
   { href: '/quittances',        label: 'Quittances',                 icon: FileCheck },
   { href: '/indexation',        label: 'Indexation des loyers',      icon: TrendingUp },
@@ -22,7 +23,6 @@ const mainLinks = [
 
 const bottomLinks = [
   { href: '/profil',   label: 'Mon profil propriétaire', icon: UserCircle },
-  { href: '/reglages', label: 'Réglages',                icon: Settings },
 ]
 
 export default function Sidebar() {
