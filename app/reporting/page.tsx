@@ -8,10 +8,16 @@ import { useMemo, useState, type ReactNode } from "react";
 
 type TypeBien = "bien_individuel" | "immeuble_rapport";
 type StatutBien = "vacant" | "occupe" | "archive";
-type StatutDepense = "brouillon" | "enregistree" | "verrouillee";
+
+type StatutPaiementReporting =
+  | "en_attente"
+  | "paye"
+  | "partiellement_paye"
+  | "impaye";
+
+type OrigineDepense = "regularisation_charges" | "reporting";
 type StatutSync = "synchronise" | "en_attente" | "erreur";
-type StatutRegularisation = "non_calculee" | "calculee" | "validee";
-type OngletDetail = "depenses" | "lots" | "regularisations" | "historique";
+type OngletReporting = "revenus" | "depenses" | "historique";
 
 type ViewState =
   | { name: "liste" }
@@ -19,7 +25,7 @@ type ViewState =
   | { name: "form_depense"; bienId: string }
   | { name: "form_sous_categorie"; bienId: string; categorieId: string };
 
-interface BienRegularisation {
+interface BienReporting {
   id: string;
   reference: string;
   nom: string;
@@ -27,27 +33,15 @@ interface BienRegularisation {
   typeBien: TypeBien;
   statut: StatutBien;
   locataireActuel?: string;
-  totalTantiemes?: 100 | 1000 | 10000 | 100000;
 }
 
-interface LotRegularisation {
-  id: string;
-  immeubleId: string;
-  reference: string;
-  nom: string;
-  locataire?: string;
-  quotePart: number;
-  baseTantiemes: number;
-  canEdit: boolean;
-}
-
-interface CategorieCharge {
+interface CategorieDepense {
   id: string;
   label: string;
-  sousCategories: SousCategorieCharge[];
+  sousCategories: SousCategorieDepense[];
 }
 
-interface SousCategorieCharge {
+interface SousCategorieDepense {
   id: string;
   label: string;
   description?: string;
@@ -56,7 +50,18 @@ interface SousCategorieCharge {
   canDelete?: boolean;
 }
 
-interface DepenseRegularisation {
+interface RevenuReporting {
+  id: string;
+  bienId: string;
+  mois: string;
+  loyerTheorique: number;
+  loyerEncaisse: number;
+  ecart: number;
+  statut: StatutPaiementReporting;
+  quittanceReference: string;
+}
+
+interface DepenseReporting {
   id: string;
   bienId: string;
   date: string;
@@ -64,11 +69,10 @@ interface DepenseRegularisation {
   categorieLabel: string;
   sousCategorieId: string;
   sousCategorieLabel: string;
-  montantAnnuel: number;
-  commentaire?: string;
+  montant: number;
   justificatif?: string;
-  statut: StatutDepense;
-  origine: "regularisation" | "reporting";
+  commentaire?: string;
+  origine: OrigineDepense;
   syncStatus: StatutSync;
   syncError?: string;
   canView: boolean;
@@ -76,33 +80,7 @@ interface DepenseRegularisation {
   canDelete: boolean;
 }
 
-interface ResultatRegularisation {
-  id: string;
-  bienId: string;
-  reference?: string;
-  annee: number;
-  statut: StatutRegularisation;
-  dateCalcul?: string;
-  dateValidation?: string;
-  chargesRecuperables: number;
-  chargesNonRecuperables: number;
-  provisionsAppelees: number;
-  montantRegularisation: number;
-  detailLots?: ResultatRegularisationLot[];
-}
-
-interface ResultatRegularisationLot {
-  lotId: string;
-  lotReference: string;
-  lotNom: string;
-  locataire?: string;
-  chargesRecuperables: number;
-  chargesNonRecuperables: number;
-  provisionsAppelees: number;
-  montantRegularisation: number;
-}
-
-interface HistoriqueItem {
+interface HistoriqueReporting {
   id: string;
   bienId: string;
   date: string;
@@ -113,11 +91,21 @@ interface HistoriqueItem {
   nouvelleValeur?: string;
 }
 
+interface SyntheseReporting {
+  bienId: string;
+  revenuTheoriqueTotal: number;
+  revenuReelTotal: number;
+  depensesTotal: number;
+  ecartTotal: number;
+  cashFlow: number;
+}
+
 // ============================================================
-// DONNÉES MOCK — SIMULATION RETOURS API
+// BIBLIOTHÈQUE COMMUNE DES DÉPENSES
+// Même nomenclature que Régularisation des charges
 // ============================================================
 
-const categoriesInitiales: CategorieCharge[] = [
+const categoriesInitiales: CategorieDepense[] = [
   {
     id: "eau",
     label: "I – Eau",
@@ -287,7 +275,10 @@ const categoriesInitiales: CategorieCharge[] = [
       { id: "isolation_thermique", label: "Isolation thermique" },
       { id: "remplacement_fenetres", label: "Remplacement des fenêtres" },
       { id: "travaux_structure", label: "Travaux de structure" },
-      { id: "refection_reseaux_collectifs", label: "Réfection des réseaux collectifs" },
+      {
+        id: "refection_reseaux_collectifs",
+        label: "Réfection des réseaux collectifs",
+      },
     ],
   },
   {
@@ -300,9 +291,18 @@ const categoriesInitiales: CategorieCharge[] = [
       },
       { id: "ramonage_individuel", label: "Ramonage individuel" },
       { id: "debouchage_canalisations", label: "Débouchage des canalisations" },
-      { id: "remplacement_joints_flexibles", label: "Remplacement de joints et flexibles" },
-      { id: "remplacement_robinet_vetuste", label: "Remplacement d’un robinet vétuste" },
-      { id: "remplacement_ballon_eau", label: "Remplacement d’un ballon d’eau chaude" },
+      {
+        id: "remplacement_joints_flexibles",
+        label: "Remplacement de joints et flexibles",
+      },
+      {
+        id: "remplacement_robinet_vetuste",
+        label: "Remplacement d’un robinet vétuste",
+      },
+      {
+        id: "remplacement_ballon_eau",
+        label: "Remplacement d’un ballon d’eau chaude",
+      },
       { id: "refection_peintures", label: "Réfection complète des peintures" },
       {
         id: "degat_cause_locataire",
@@ -347,7 +347,11 @@ const categoriesInitiales: CategorieCharge[] = [
   },
 ];
 
-const biensMock: BienRegularisation[] = [
+// ============================================================
+// MOCK DATA — SIMULATION RETOURS API
+// ============================================================
+
+const biensMock: BienReporting[] = [
   {
     id: "bi001",
     reference: "BI-000001",
@@ -373,54 +377,53 @@ const biensMock: BienRegularisation[] = [
     adresse: "14 Rue de Paris, 59000 Lille",
     typeBien: "immeuble_rapport",
     statut: "occupe",
-    totalTantiemes: 1000,
   },
 ];
 
-const lotsMock: LotRegularisation[] = [
+const revenusMock: RevenuReporting[] = [
   {
-    id: "lot001",
-    immeubleId: "im001",
-    reference: "LOT-000001",
-    nom: "Lot 1 — Studio",
-    locataire: "Sarah Morel",
-    quotePart: 250,
-    baseTantiemes: 1000,
-    canEdit: true,
+    id: "rev001",
+    bienId: "bi001",
+    mois: "Janvier 2026",
+    loyerTheorique: 955,
+    loyerEncaisse: 955,
+    ecart: 0,
+    statut: "paye",
+    quittanceReference: "QUI-2026-000001",
   },
   {
-    id: "lot002",
-    immeubleId: "im001",
-    reference: "LOT-000002",
-    nom: "Lot 2 — T2",
-    locataire: "Nora Diallo",
-    quotePart: 250,
-    baseTantiemes: 1000,
-    canEdit: true,
+    id: "rev002",
+    bienId: "bi001",
+    mois: "Février 2026",
+    loyerTheorique: 955,
+    loyerEncaisse: 500,
+    ecart: 455,
+    statut: "partiellement_paye",
+    quittanceReference: "QUI-2026-000002",
   },
   {
-    id: "lot003",
-    immeubleId: "im001",
-    reference: "LOT-000003",
-    nom: "Lot 3 — T3",
-    locataire: "Vacant",
-    quotePart: 300,
-    baseTantiemes: 1000,
-    canEdit: true,
+    id: "rev003",
+    bienId: "bi001",
+    mois: "Mars 2026",
+    loyerTheorique: 955,
+    loyerEncaisse: 0,
+    ecart: 955,
+    statut: "impaye",
+    quittanceReference: "QUI-2026-000003",
   },
   {
-    id: "lot004",
-    immeubleId: "im001",
-    reference: "LOT-000004",
-    nom: "Lot 4 — T2",
-    locataire: "Amine B.",
-    quotePart: 200,
-    baseTantiemes: 1000,
-    canEdit: true,
+    id: "rev004",
+    bienId: "bi002",
+    mois: "Mars 2026",
+    loyerTheorique: 760,
+    loyerEncaisse: 760,
+    ecart: 0,
+    statut: "paye",
+    quittanceReference: "QUI-2026-000004",
   },
 ];
 
-const depensesMock: DepenseRegularisation[] = [
+const depensesMock: DepenseReporting[] = [
   {
     id: "dep001",
     bienId: "bi001",
@@ -429,69 +432,103 @@ const depensesMock: DepenseRegularisation[] = [
     categorieLabel: "VIII – Fiscalité et redevances",
     sousCategorieId: "teom",
     sousCategorieLabel: "Taxe d’enlèvement des ordures ménagères (TEOM)",
-    montantAnnuel: 180,
-    commentaire: "Montant hors frais de gestion.",
+    montant: 180,
     justificatif: "avis_taxe_fonciere.pdf",
-    statut: "enregistree",
-    origine: "regularisation",
+    commentaire: "Dépense importée depuis Régularisation des charges.",
+    origine: "regularisation_charges",
+    syncStatus: "synchronise",
+    canView: true,
+    canEdit: false,
+    canDelete: false,
+  },
+  {
+    id: "dep002",
+    bienId: "bi001",
+    date: "2026-02-10",
+    categorieId: "assurances",
+    categorieLabel: "X – Assurances",
+    sousCategorieId: "assurance_pno",
+    sousCategorieLabel: "Assurance propriétaire non occupant (PNO)",
+    montant: 140,
+    justificatif: "assurance_pno.pdf",
+    origine: "reporting",
     syncStatus: "synchronise",
     canView: true,
     canEdit: true,
     canDelete: true,
   },
   {
-    id: "dep002",
+    id: "dep003",
     bienId: "im001",
     date: "2026-02-03",
     categorieId: "parties_communes",
     categorieLabel: "IV – Parties communes",
     sousCategorieId: "nettoyage_parties_communes",
     sousCategorieLabel: "Nettoyage des parties communes",
-    montantAnnuel: 1200,
+    montant: 1200,
     justificatif: "facture_nettoyage.pdf",
-    statut: "enregistree",
-    origine: "reporting",
+    origine: "regularisation_charges",
     syncStatus: "synchronise",
     canView: true,
-    canEdit: true,
+    canEdit: false,
     canDelete: false,
   },
 ];
 
-const regularisationsMock: ResultatRegularisation[] = [
-  {
-    id: "reg001",
-    bienId: "bi001",
-    reference: "REG-2026-000001",
-    annee: 2026,
-    statut: "validee",
-    dateCalcul: "2026-12-31",
-    dateValidation: "2027-01-05",
-    chargesRecuperables: 180,
-    chargesNonRecuperables: 0,
-    provisionsAppelees: 960,
-    montantRegularisation: -780,
-  },
-];
-
-const historiqueMock: HistoriqueItem[] = [
+const historiqueMock: HistoriqueReporting[] = [
   {
     id: "hist001",
     bienId: "bi001",
-    date: "2026-01-12",
+    date: "2026-01-01",
     heure: "09:00",
-    utilisateur: "Utilisateur connecté",
-    action: "Dépense créée",
-    nouvelleValeur: "TEOM — 180 €",
+    utilisateur: "Système",
+    action: "Quittance générée",
+    nouvelleValeur: "Revenu théorique créé : QUI-2026-000001",
   },
   {
     id: "hist002",
     bienId: "bi001",
-    date: "2027-01-05",
+    date: "2026-01-03",
     heure: "10:30",
     utilisateur: "Utilisateur connecté",
-    action: "Régularisation validée",
-    nouvelleValeur: "REG-2026-000001",
+    action: "Paiement déclaré",
+    nouvelleValeur: "Revenu réel encaissé : 955 €",
+  },
+  {
+    id: "hist003",
+    bienId: "bi001",
+    date: "2026-02-10",
+    heure: "14:15",
+    utilisateur: "Utilisateur connecté",
+    action: "Dépense créée dans Reporting",
+    nouvelleValeur: "Assurance propriétaire non occupant — 140 €",
+  },
+];
+
+const synthesesMock: SyntheseReporting[] = [
+  {
+    bienId: "bi001",
+    revenuTheoriqueTotal: 2865,
+    revenuReelTotal: 1455,
+    depensesTotal: 320,
+    ecartTotal: 1410,
+    cashFlow: 1135,
+  },
+  {
+    bienId: "bi002",
+    revenuTheoriqueTotal: 760,
+    revenuReelTotal: 760,
+    depensesTotal: 0,
+    ecartTotal: 0,
+    cashFlow: 760,
+  },
+  {
+    bienId: "im001",
+    revenuTheoriqueTotal: 0,
+    revenuReelTotal: 0,
+    depensesTotal: 1200,
+    ecartTotal: 0,
+    cashFlow: -1200,
   },
 ];
 
@@ -514,20 +551,52 @@ function getNowTime() {
   });
 }
 
-function getBienTypeLabel(type: TypeBien) {
-  return type === "immeuble_rapport" ? "Immeuble de rapport" : "Bien individuel";
-}
-
-function findBien(biens: BienRegularisation[], bienId: string) {
+function findBien(biens: BienReporting[], bienId: string) {
   return biens.find(bien => bien.id === bienId);
 }
 
-function findCategorie(categories: CategorieCharge[], categorieId: string) {
+function findCategorie(categories: CategorieDepense[], categorieId: string) {
   return categories.find(categorie => categorie.id === categorieId);
 }
 
+function getTypeBienLabel(type: TypeBien) {
+  return type === "immeuble_rapport" ? "Immeuble de rapport" : "Bien individuel";
+}
+
+function getStatutPaiementLabel(statut: StatutPaiementReporting) {
+  const labels: Record<StatutPaiementReporting, string> = {
+    en_attente: "En attente",
+    paye: "Payé",
+    partiellement_paye: "Partiellement payé",
+    impaye: "Impayé",
+  };
+
+  return labels[statut];
+}
+
+function getStatutPaiementTone(
+  statut: StatutPaiementReporting
+): "green" | "orange" | "red" | "gray" {
+  if (statut === "paye") return "green";
+  if (statut === "partiellement_paye") return "orange";
+  if (statut === "impaye") return "red";
+  return "gray";
+}
+
+function getSyncTone(sync: StatutSync): "green" | "orange" | "red" {
+  if (sync === "synchronise") return "green";
+  if (sync === "erreur") return "red";
+  return "orange";
+}
+
+function getOrigineDepenseLabel(origine: OrigineDepense) {
+  return origine === "regularisation_charges"
+    ? "Régularisation des charges"
+    : "Reporting";
+}
+
 // ============================================================
-// COMPOSANTS UI
+// UI
 // ============================================================
 
 function PageShell({ children }: { children: ReactNode }) {
@@ -646,7 +715,7 @@ function StatCard({
       style={{ background: gradient }}
     >
       <div className="text-3xl mb-4">{emoji}</div>
-      <p className="text-3xl font-black leading-none">{value}</p>
+      <p className="text-2xl sm:text-3xl font-black leading-none">{value}</p>
       <p className="text-sm font-black mt-2 opacity-95">{label}</p>
     </div>
   );
@@ -707,24 +776,23 @@ function StatusBadge({
 }
 
 // ============================================================
-// ÉCRAN PRINCIPAL
+// LISTE DES BIENS
 // ============================================================
 
-function VueListeBiens({
+function VueListeBiensReporting({
   biens,
-  depenses,
-  regularisations,
-  onSelectBien,
+  syntheses,
+  onOpen,
 }: {
-  biens: BienRegularisation[];
-  depenses: DepenseRegularisation[];
-  regularisations: ResultatRegularisation[];
-  onSelectBien: (bienId: string) => void;
+  biens: BienReporting[];
+  syntheses: SyntheseReporting[];
+  onOpen: (bienId: string) => void;
 }) {
   const [recherche, setRecherche] = useState("");
 
   const biensAffiches = biens.filter(bien => {
     const q = recherche.toLowerCase();
+
     return (
       bien.nom.toLowerCase().includes(q) ||
       bien.reference.toLowerCase().includes(q) ||
@@ -732,17 +800,14 @@ function VueListeBiens({
     );
   });
 
-  const biensIndividuels = biens.filter(bien => bien.typeBien === "bien_individuel");
-  const immeubles = biens.filter(bien => bien.typeBien === "immeuble_rapport");
-  const regularisationsValidees = regularisations.filter(
-    regularisation => regularisation.statut === "validee"
-  );
+  const biensIndividuels = biens.filter(b => b.typeBien === "bien_individuel");
+  const immeubles = biens.filter(b => b.typeBien === "immeuble_rapport");
 
   return (
     <PageShell>
       <PageHeader
-        title="🧮 Régularisation des charges"
-        subtitle="Dépenses, justificatifs, régularisations, lots, tantièmes et synchronisation Reporting."
+        title="📊 Reporting"
+        subtitle="Revenus théoriques, revenus encaissés, dépenses, historique financier et exports."
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -753,22 +818,25 @@ function VueListeBiens({
             label="Biens individuels"
             gradient="linear-gradient(135deg,#f97316,#fb923c)"
           />
+
           <StatCard
             emoji="🏢"
             value={immeubles.length}
             label="Immeubles de rapport"
             gradient="linear-gradient(135deg,#22c55e,#4ade80)"
           />
+
           <StatCard
             emoji="💶"
-            value={depenses.length}
-            label="Dépenses enregistrées"
+            value="API"
+            label="Revenus consolidés"
             gradient="linear-gradient(135deg,#8b5cf6,#a78bfa)"
           />
+
           <StatCard
-            emoji="✅"
-            value={regularisationsValidees.length}
-            label="Régularisations validées"
+            emoji="📤"
+            value="PDF / Excel"
+            label="Exports"
             gradient="linear-gradient(135deg,#3b82f6,#60a5fa)"
           />
         </div>
@@ -786,15 +854,12 @@ function VueListeBiens({
 
         <div className="space-y-4">
           {biensAffiches.map(bien => {
-            const depensesBien = depenses.filter(depense => depense.bienId === bien.id);
-            const regularisationsBien = regularisations.filter(
-              regularisation => regularisation.bienId === bien.id
-            );
+            const synthese = syntheses.find(item => item.bienId === bien.id);
 
             return (
               <button
                 key={bien.id}
-                onClick={() => onSelectBien(bien.id)}
+                onClick={() => onOpen(bien.id)}
                 className="w-full bg-white rounded-[2rem] p-5 shadow-sm hover:shadow-md transition text-left"
               >
                 <div className="flex items-center justify-between gap-5 flex-wrap">
@@ -813,17 +878,14 @@ function VueListeBiens({
 
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p
-                          className="text-base font-black"
-                          style={{ color: "#1e293b" }}
-                        >
+                        <p className="text-base font-black" style={{ color: "#1e293b" }}>
                           {bien.nom}
                         </p>
 
                         <StatusBadge
                           tone={bien.typeBien === "immeuble_rapport" ? "purple" : "blue"}
                         >
-                          {getBienTypeLabel(bien.typeBien)}
+                          {getTypeBienLabel(bien.typeBien)}
                         </StatusBadge>
                       </div>
 
@@ -832,7 +894,7 @@ function VueListeBiens({
                       </p>
 
                       <p className="text-xs mt-1" style={{ color: "#cbd5e1" }}>
-                        {bien.locataireActuel || "Lots visibles dans la fiche immeuble"} ·{" "}
+                        {bien.locataireActuel || "Détail consolidé par API"} ·{" "}
                         {bien.statut}
                       </p>
                     </div>
@@ -840,10 +902,10 @@ function VueListeBiens({
 
                   <div className="text-right">
                     <p className="text-sm font-black" style={{ color: "#f97316" }}>
-                      {depensesBien.length} dépense(s)
+                      {formatEuros(synthese?.cashFlow || 0)}
                     </p>
                     <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
-                      {regularisationsBien.length} régularisation(s)
+                      Cash-flow API
                     </p>
                   </div>
                 </div>
@@ -860,21 +922,21 @@ function VueListeBiens({
 // FORMULAIRE DÉPENSE
 // ============================================================
 
-function FormDepense({
+function FormDepenseReporting({
   bien,
   categories,
   onBack,
   onSave,
   onAddCustomSubcategory,
 }: {
-  bien: BienRegularisation;
-  categories: CategorieCharge[];
+  bien: BienReporting;
+  categories: CategorieDepense[];
   onBack: () => void;
   onSave: (payload: {
     bienId: string;
     categorieId: string;
     sousCategorieId: string;
-    montantAnnuel: number;
+    montant: number;
     date: string;
     commentaire?: string;
     justificatif?: string;
@@ -883,10 +945,12 @@ function FormDepense({
 }) {
   const [categorieId, setCategorieId] = useState(categories[0]?.id || "");
   const categorie = findCategorie(categories, categorieId);
+
   const [sousCategorieId, setSousCategorieId] = useState(
     categorie?.sousCategories[0]?.id || ""
   );
-  const [montantAnnuel, setMontantAnnuel] = useState("");
+
+  const [montant, setMontant] = useState("");
   const [date, setDate] = useState(getToday());
   const [commentaire, setCommentaire] = useState("");
   const [justificatif, setJustificatif] = useState("");
@@ -903,8 +967,8 @@ function FormDepense({
       return;
     }
 
-    if (!montantAnnuel || Number(montantAnnuel) <= 0) {
-      alert("Veuillez renseigner un montant annuel valide.");
+    if (!montant || Number(montant) <= 0) {
+      alert("Veuillez renseigner un montant valide.");
       return;
     }
 
@@ -927,7 +991,7 @@ function FormDepense({
       bienId: bien.id,
       categorieId,
       sousCategorieId,
-      montantAnnuel: Number(montantAnnuel),
+      montant: Number(montant),
       date,
       commentaire,
       justificatif,
@@ -993,12 +1057,12 @@ function FormDepense({
 
             <div>
               <label className="block text-xs font-black mb-2" style={{ color: "#64748b" }}>
-                Montant annuel *
+                Montant *
               </label>
               <input
                 type="number"
-                value={montantAnnuel}
-                onChange={event => setMontantAnnuel(event.target.value)}
+                value={montant}
+                onChange={event => setMontant(event.target.value)}
                 placeholder="0"
                 className="w-full px-4 py-3 rounded-3xl border outline-none text-sm"
                 style={{ borderColor: "#e2e8f0" }}
@@ -1007,7 +1071,7 @@ function FormDepense({
 
             <div>
               <label className="block text-xs font-black mb-2" style={{ color: "#64748b" }}>
-                Date de la dépense *
+                Date *
               </label>
               <input
                 type="date"
@@ -1053,9 +1117,9 @@ function FormDepense({
             style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe" }}
           >
             <p className="text-sm font-bold" style={{ color: "#1d4ed8" }}>
-              Le Front-End transmet la dépense à l’API. La qualification juridique,
-              les montants récupérables, la synchronisation Reporting et les calculs
-              sont gérés exclusivement par le Back-End.
+              Le Front-End transmet la dépense à l’API. Les traitements comptables,
+              financiers, fiscaux, la synchronisation avec Régularisation des charges
+              et les indicateurs sont gérés par le Back-End.
             </p>
           </div>
 
@@ -1074,15 +1138,15 @@ function FormDepense({
 }
 
 // ============================================================
-// FORMULAIRE SOUS-CATÉGORIE PERSONNALISÉE
+// FORMULAIRE SOUS-CATÉGORIE
 // ============================================================
 
-function FormSousCategoriePersonnalisee({
+function FormSousCategorieReporting({
   categorie,
   onBack,
   onSave,
 }: {
-  categorie: CategorieCharge;
+  categorie: CategorieDepense;
   onBack: () => void;
   onSave: (payload: { categorieId: string; label: string; description?: string }) => void;
 }) {
@@ -1124,7 +1188,7 @@ function FormSousCategoriePersonnalisee({
               <input
                 value={label}
                 onChange={event => setLabel(event.target.value)}
-                placeholder="Ex : Entretien spécifique..."
+                placeholder="Ex : Dépense spécifique..."
                 className="w-full px-4 py-3 rounded-3xl border outline-none text-sm"
                 style={{ borderColor: "#e2e8f0" }}
               />
@@ -1160,124 +1224,195 @@ function FormSousCategoriePersonnalisee({
 }
 
 // ============================================================
-// DÉTAIL BIEN
+// FICHE REPORTING
 // ============================================================
 
-function VueDetailBien({
+function VueDetailReporting({
   bien,
-  lots,
+  revenus,
   depenses,
-  regularisations,
   historique,
+  synthese,
   activeTab,
   setActiveTab,
   onBack,
   onAddDepense,
-  onCalculateRegularisation,
-  onValidateRegularisation,
-  onUpdateLots,
+  onExportPDF,
+  onExportExcel,
 }: {
-  bien: BienRegularisation;
-  lots: LotRegularisation[];
-  depenses: DepenseRegularisation[];
-  regularisations: ResultatRegularisation[];
-  historique: HistoriqueItem[];
-  activeTab: OngletDetail;
-  setActiveTab: (tab: OngletDetail) => void;
+  bien: BienReporting;
+  revenus: RevenuReporting[];
+  depenses: DepenseReporting[];
+  historique: HistoriqueReporting[];
+  synthese?: SyntheseReporting;
+  activeTab: OngletReporting;
+  setActiveTab: (tab: OngletReporting) => void;
   onBack: () => void;
   onAddDepense: () => void;
-  onCalculateRegularisation: () => void;
-  onValidateRegularisation: (regularisationId: string) => void;
-  onUpdateLots: (lots: LotRegularisation[]) => void;
+  onExportPDF: () => void;
+  onExportExcel: () => void;
 }) {
-  const [lotsEdit, setLotsEdit] = useState<LotRegularisation[]>(lots);
-
-  const tabs: { id: OngletDetail; label: string; emoji: string; visible: boolean }[] = [
-    { id: "depenses", label: "Dépenses", emoji: "💶", visible: true },
-    { id: "lots", label: "Lots", emoji: "🏢", visible: bien.typeBien === "immeuble_rapport" },
-    { id: "regularisations", label: "Régularisations", emoji: "🧮", visible: true },
-    { id: "historique", label: "Historique", emoji: "🕐", visible: true },
+  const tabs: { id: OngletReporting; label: string; emoji: string }[] = [
+    { id: "revenus", label: "Revenus", emoji: "💶" },
+    { id: "depenses", label: "Dépenses", emoji: "📉" },
+    { id: "historique", label: "Historique", emoji: "🕐" },
   ];
 
   return (
     <PageShell>
       <PageHeader
-        title={`${bien.typeBien === "immeuble_rapport" ? "🏢" : "🏠"} ${bien.nom}`}
+        title={`📊 ${bien.nom}`}
         subtitle={`${bien.reference} · ${bien.adresse}`}
         onBack={onBack}
         actions={
-          <ActionButton onClick={onAddDepense} variant="orange">
-            + Ajouter une dépense
-          </ActionButton>
+          <>
+            <ActionButton onClick={onAddDepense} variant="orange">
+              + Ajouter une dépense
+            </ActionButton>
+            <ActionButton onClick={onExportPDF} variant="blue">
+              Export PDF
+            </ActionButton>
+            <ActionButton onClick={onExportExcel} variant="green">
+              Export Excel
+            </ActionButton>
+          </>
         }
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           <StatCard
-            emoji="💶"
-            value={depenses.length}
-            label="Dépenses"
+            emoji="📄"
+            value={formatEuros(synthese?.revenuTheoriqueTotal || 0)}
+            label="Revenus théoriques"
             gradient="linear-gradient(135deg,#f97316,#fb923c)"
           />
           <StatCard
-            emoji="🏷️"
-            value={getBienTypeLabel(bien.typeBien)}
-            label="Type d’actif"
+            emoji="💶"
+            value={formatEuros(synthese?.revenuReelTotal || 0)}
+            label="Revenus encaissés"
             gradient="linear-gradient(135deg,#22c55e,#4ade80)"
           />
           <StatCard
-            emoji="📄"
-            value={regularisations.length}
-            label="Régularisations"
+            emoji="📉"
+            value={formatEuros(synthese?.depensesTotal || 0)}
+            label="Dépenses"
             gradient="linear-gradient(135deg,#8b5cf6,#a78bfa)"
           />
           <StatCard
-            emoji="🔁"
-            value={depenses.filter(depense => depense.syncStatus === "synchronise").length}
-            label="Synchronisées"
+            emoji="📊"
+            value={formatEuros(synthese?.cashFlow || 0)}
+            label="Cash-flow API"
             gradient="linear-gradient(135deg,#3b82f6,#60a5fa)"
           />
         </div>
 
         <SectionCard>
-          <SectionTitle emoji="📌" title="Informations du bien" />
+          <SectionTitle emoji="📌" title="Informations générales" />
 
-          <div className="grid sm:grid-cols-4 gap-3">
+          <div className="grid sm:grid-cols-5 gap-3">
             <InfoRow label="Nom" value={bien.nom} />
             <InfoRow label="Adresse" value={bien.adresse} />
-            <InfoRow label="Locataire" value={bien.locataireActuel || "Voir les lots"} />
+            <InfoRow label="Type" value={getTypeBienLabel(bien.typeBien)} />
             <InfoRow label="Statut" value={bien.statut} />
+            <InfoRow label="Locataire" value={bien.locataireActuel || "—"} />
           </div>
         </SectionCard>
 
         <div className="flex gap-2 overflow-x-auto py-5">
-          {tabs
-            .filter(tab => tab.visible)
-            .map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-2 px-5 py-3 rounded-3xl text-sm font-black whitespace-nowrap"
-                style={{
-                  backgroundColor: activeTab === tab.id ? "#f97316" : "#fff",
-                  color: activeTab === tab.id ? "#fff" : "#64748b",
-                  boxShadow:
-                    activeTab === tab.id ? "0 10px 25px rgba(249,115,22,0.22)" : "none",
-                }}
-              >
-                {tab.emoji} {tab.label}
-              </button>
-            ))}
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex items-center gap-2 px-5 py-3 rounded-3xl text-sm font-black whitespace-nowrap"
+              style={{
+                backgroundColor: activeTab === tab.id ? "#f97316" : "#fff",
+                color: activeTab === tab.id ? "#fff" : "#64748b",
+                boxShadow:
+                  activeTab === tab.id ? "0 10px 25px rgba(249,115,22,0.22)" : "none",
+              }}
+            >
+              {tab.emoji} {tab.label}
+            </button>
+          ))}
         </div>
+
+        {activeTab === "revenus" && (
+          <SectionCard>
+            <SectionTitle emoji="💶" title="Revenus retournés par l’API" />
+
+            {revenus.length === 0 ? (
+              <p className="text-sm text-center py-8" style={{ color: "#94a3b8" }}>
+                Aucun revenu retourné par l’API pour ce bien.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {revenus.map(revenu => (
+                  <div
+                    key={revenu.id}
+                    className="p-4 rounded-3xl"
+                    style={{ backgroundColor: "#f8fafc" }}
+                  >
+                    <div className="flex justify-between gap-4 flex-wrap">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-black" style={{ color: "#1e293b" }}>
+                            {revenu.mois}
+                          </p>
+
+                          <StatusBadge tone={getStatutPaiementTone(revenu.statut)}>
+                            {getStatutPaiementLabel(revenu.statut)}
+                          </StatusBadge>
+                        </div>
+
+                        <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
+                          {revenu.quittanceReference}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3 text-right">
+                        <div>
+                          <p className="text-sm font-black" style={{ color: "#1e293b" }}>
+                            {formatEuros(revenu.loyerTheorique)}
+                          </p>
+                          <p className="text-xs" style={{ color: "#94a3b8" }}>
+                            Théorique
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-black" style={{ color: "#16a34a" }}>
+                            {formatEuros(revenu.loyerEncaisse)}
+                          </p>
+                          <p className="text-xs" style={{ color: "#94a3b8" }}>
+                            Encaissé
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-black" style={{ color: "#dc2626" }}>
+                            {formatEuros(revenu.ecart)}
+                          </p>
+                          <p className="text-xs" style={{ color: "#94a3b8" }}>
+                            Écart API
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        )}
 
         {activeTab === "depenses" && (
           <SectionCard>
-            <SectionTitle emoji="💶" title="Dépenses retournées par l’API" />
+            <SectionTitle emoji="📉" title="Dépenses retournées par l’API" />
 
             {depenses.length === 0 ? (
               <p className="text-sm text-center py-8" style={{ color: "#94a3b8" }}>
-                Aucune dépense enregistrée.
+                Aucune dépense retournée par l’API pour ce bien.
               </p>
             ) : (
               <div className="space-y-3">
@@ -1290,24 +1425,15 @@ function VueDetailBien({
                     <div className="flex justify-between gap-4 flex-wrap">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p
-                            className="text-sm font-black"
-                            style={{ color: "#1e293b" }}
-                          >
+                          <p className="text-sm font-black" style={{ color: "#1e293b" }}>
                             {depense.sousCategorieLabel}
                           </p>
 
-                          <StatusBadge tone="blue">{depense.statut}</StatusBadge>
+                          <StatusBadge tone="blue">
+                            {getOrigineDepenseLabel(depense.origine)}
+                          </StatusBadge>
 
-                          <StatusBadge
-                            tone={
-                              depense.syncStatus === "synchronise"
-                                ? "green"
-                                : depense.syncStatus === "erreur"
-                                  ? "red"
-                                  : "orange"
-                            }
-                          >
+                          <StatusBadge tone={getSyncTone(depense.syncStatus)}>
                             {depense.syncStatus}
                           </StatusBadge>
                         </div>
@@ -1316,12 +1442,11 @@ function VueDetailBien({
                           {depense.date} · {depense.categorieLabel}
                         </p>
 
-                        <p className="text-xs mt-1" style={{ color: "#cbd5e1" }}>
-                          Origine :{" "}
-                          {depense.origine === "reporting"
-                            ? "Reporting"
-                            : "Régularisation des charges"}
-                        </p>
+                        {depense.justificatif && (
+                          <p className="text-xs mt-1" style={{ color: "#cbd5e1" }}>
+                            Justificatif : {depense.justificatif}
+                          </p>
+                        )}
 
                         {depense.syncError && (
                           <p className="text-xs mt-1 font-bold" style={{ color: "#dc2626" }}>
@@ -1331,15 +1456,8 @@ function VueDetailBien({
                       </div>
 
                       <div className="text-right">
-                        <p
-                          className="text-base font-black"
-                          style={{ color: "#f97316" }}
-                        >
-                          {formatEuros(depense.montantAnnuel)}
-                        </p>
-
-                        <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
-                          {depense.justificatif || "Aucun justificatif"}
+                        <p className="text-base font-black" style={{ color: "#f97316" }}>
+                          {formatEuros(depense.montant)}
                         </p>
 
                         <div className="flex justify-end gap-2 mt-3 flex-wrap">
@@ -1356,215 +1474,13 @@ function VueDetailBien({
           </SectionCard>
         )}
 
-        {activeTab === "lots" && bien.typeBien === "immeuble_rapport" && (
-          <SectionCard>
-            <SectionTitle emoji="🏢" title="Lots et tantièmes" />
-
-            <div className="space-y-3">
-              {lotsEdit.map((lot, index) => (
-                <div
-                  key={lot.id}
-                  className="p-4 rounded-3xl"
-                  style={{ backgroundColor: "#f8fafc" }}
-                >
-                  <div className="grid sm:grid-cols-5 gap-3 items-end">
-                    <InfoRow label="Lot" value={`${lot.reference} · ${lot.nom}`} />
-                    <InfoRow label="Locataire" value={lot.locataire || "—"} />
-
-                    <div>
-                      <label
-                        className="block text-xs font-black mb-2"
-                        style={{ color: "#64748b" }}
-                      >
-                        Quote-part
-                      </label>
-                      <input
-                        type="number"
-                        value={lot.quotePart}
-                        disabled={!lot.canEdit}
-                        onChange={event => {
-                          const next = [...lotsEdit];
-                          next[index] = {
-                            ...next[index],
-                            quotePart: Number(event.target.value),
-                          };
-                          setLotsEdit(next);
-                        }}
-                        className="w-full px-4 py-3 rounded-3xl border outline-none text-sm disabled:opacity-60"
-                        style={{ borderColor: "#e2e8f0" }}
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-xs font-black mb-2"
-                        style={{ color: "#64748b" }}
-                      >
-                        Base de tantièmes
-                      </label>
-                      <select
-                        value={lot.baseTantiemes}
-                        disabled={!lot.canEdit}
-                        onChange={event => {
-                          const base = Number(event.target.value);
-                          const next = lotsEdit.map(item => ({
-                            ...item,
-                            baseTantiemes: base,
-                          }));
-                          setLotsEdit(next);
-                        }}
-                        className="w-full px-4 py-3 rounded-3xl border outline-none text-sm disabled:opacity-60"
-                        style={{ borderColor: "#e2e8f0" }}
-                      >
-                        <option value={100}>100</option>
-                        <option value={1000}>1 000</option>
-                        <option value={10000}>10 000</option>
-                        <option value={100000}>100 000</option>
-                      </select>
-                    </div>
-
-                    <StatusBadge tone={lot.canEdit ? "green" : "gray"}>
-                      {lot.canEdit ? "Modifiable" : "Verrouillé"}
-                    </StatusBadge>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => onUpdateLots(lotsEdit)}
-              className="mt-5 w-full py-4 rounded-3xl text-white text-sm font-black shadow"
-              style={{ background: "linear-gradient(135deg,#f97316,#fb923c)" }}
-            >
-              Enregistrer les tantièmes
-            </button>
-          </SectionCard>
-        )}
-
-        {activeTab === "regularisations" && (
-          <SectionCard>
-            <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
-              <SectionTitle emoji="🧮" title="Régularisations retournées par l’API" />
-              <ActionButton onClick={onCalculateRegularisation} variant="orange">
-                Calculer la régularisation
-              </ActionButton>
-            </div>
-
-            {regularisations.length === 0 ? (
-              <p className="text-sm text-center py-8" style={{ color: "#94a3b8" }}>
-                Aucune régularisation calculée.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {regularisations.map(reg => (
-                  <div
-                    key={reg.id}
-                    className="p-5 rounded-3xl"
-                    style={{ backgroundColor: "#f8fafc" }}
-                  >
-                    <div className="flex justify-between gap-4 flex-wrap mb-4">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p
-                            className="text-sm font-black"
-                            style={{ color: "#1e293b" }}
-                          >
-                            {reg.reference || `Régularisation ${reg.annee}`}
-                          </p>
-
-                          <StatusBadge
-                            tone={
-                              reg.statut === "validee"
-                                ? "green"
-                                : reg.statut === "calculee"
-                                  ? "orange"
-                                  : "gray"
-                            }
-                          >
-                            {reg.statut}
-                          </StatusBadge>
-                        </div>
-
-                        <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
-                          Année {reg.annee} · Date calcul : {reg.dateCalcul || "—"}
-                        </p>
-                      </div>
-
-                      {reg.statut === "calculee" && (
-                        <ActionButton
-                          onClick={() => onValidateRegularisation(reg.id)}
-                          variant="green"
-                        >
-                          Valider
-                        </ActionButton>
-                      )}
-                    </div>
-
-                    <div className="grid sm:grid-cols-4 gap-3">
-                      <InfoRow
-                        label="Charges récupérables"
-                        value={formatEuros(reg.chargesRecuperables)}
-                      />
-                      <InfoRow
-                        label="Charges non récupérables"
-                        value={formatEuros(reg.chargesNonRecuperables)}
-                      />
-                      <InfoRow
-                        label="Provisions appelées"
-                        value={formatEuros(reg.provisionsAppelees)}
-                      />
-                      <InfoRow
-                        label="Montant régularisation"
-                        value={formatEuros(reg.montantRegularisation)}
-                      />
-                    </div>
-
-                    {reg.detailLots && reg.detailLots.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        {reg.detailLots.map(lot => (
-                          <div
-                            key={lot.lotId}
-                            className="p-3 rounded-2xl"
-                            style={{ backgroundColor: "#fff" }}
-                          >
-                            <div className="flex justify-between gap-3 flex-wrap">
-                              <div>
-                                <p
-                                  className="text-sm font-black"
-                                  style={{ color: "#1e293b" }}
-                                >
-                                  {lot.lotReference} · {lot.lotNom}
-                                </p>
-                                <p className="text-xs" style={{ color: "#94a3b8" }}>
-                                  {lot.locataire || "Vacant"}
-                                </p>
-                              </div>
-
-                              <p
-                                className="text-sm font-black"
-                                style={{ color: "#f97316" }}
-                              >
-                                {formatEuros(lot.montantRegularisation)}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </SectionCard>
-        )}
-
         {activeTab === "historique" && (
           <SectionCard>
             <SectionTitle emoji="🕐" title="Historique retourné par l’API" />
 
             {historique.length === 0 ? (
               <p className="text-sm text-center py-8" style={{ color: "#94a3b8" }}>
-                Aucun historique.
+                Aucun historique retourné par l’API.
               </p>
             ) : (
               <div className="space-y-3">
@@ -1576,10 +1492,7 @@ function VueDetailBien({
                   >
                     <div className="flex justify-between gap-4 flex-wrap">
                       <div>
-                        <p
-                          className="text-sm font-black"
-                          style={{ color: "#1e293b" }}
-                        >
+                        <p className="text-sm font-black" style={{ color: "#1e293b" }}>
                           {item.action}
                         </p>
                         <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
@@ -1613,24 +1526,25 @@ function VueDetailBien({
 // MODULE PRINCIPAL
 // ============================================================
 
-export default function ModuleRegularisationCharges() {
+export default function ModuleReporting() {
   const [view, setView] = useState<ViewState>({ name: "liste" });
-  const [activeTab, setActiveTab] = useState<OngletDetail>("depenses");
+  const [activeTab, setActiveTab] = useState<OngletReporting>("revenus");
 
-  const [biens] = useState<BienRegularisation[]>(biensMock);
-  const [lots, setLots] = useState<LotRegularisation[]>(lotsMock);
-  const [categories, setCategories] = useState<CategorieCharge[]>(categoriesInitiales);
-  const [depenses, setDepenses] = useState<DepenseRegularisation[]>(depensesMock);
-  const [regularisations, setRegularisations] =
-    useState<ResultatRegularisation[]>(regularisationsMock);
-  const [historique, setHistorique] = useState<HistoriqueItem[]>(historiqueMock);
+  const [biens] = useState<BienReporting[]>(biensMock);
+  const [revenus] = useState<RevenuReporting[]>(revenusMock);
+  const [depenses, setDepenses] = useState<DepenseReporting[]>(depensesMock);
+  const [historique, setHistorique] =
+    useState<HistoriqueReporting[]>(historiqueMock);
+  const [syntheses] = useState<SyntheseReporting[]>(synthesesMock);
+  const [categories, setCategories] =
+    useState<CategorieDepense[]>(categoriesInitiales);
 
   const selectedBien = useMemo(() => {
-    if (view.name === "detail" || view.name === "form_depense") {
-      return findBien(biens, view.bienId);
-    }
-
-    if (view.name === "form_sous_categorie") {
+    if (
+      view.name === "detail" ||
+      view.name === "form_depense" ||
+      view.name === "form_sous_categorie"
+    ) {
       return findBien(biens, view.bienId);
     }
 
@@ -1642,7 +1556,12 @@ export default function ModuleRegularisationCharges() {
     return findCategorie(categories, view.categorieId);
   }, [view, categories]);
 
-  const addHistory = (bienId: string, action: string, nouvelleValeur?: string) => {
+  const addHistory = (
+    bienId: string,
+    action: string,
+    ancienneValeur?: string,
+    nouvelleValeur?: string
+  ) => {
     setHistorique(prev => [
       ...prev,
       {
@@ -1652,6 +1571,7 @@ export default function ModuleRegularisationCharges() {
         heure: getNowTime(),
         utilisateur: "Utilisateur connecté",
         action,
+        ancienneValeur,
         nouvelleValeur,
       },
     ]);
@@ -1661,7 +1581,7 @@ export default function ModuleRegularisationCharges() {
     bienId: string;
     categorieId: string;
     sousCategorieId: string;
-    montantAnnuel: number;
+    montant: number;
     date: string;
     commentaire?: string;
     justificatif?: string;
@@ -1676,7 +1596,7 @@ export default function ModuleRegularisationCharges() {
       return;
     }
 
-    const depenseApiResponse: DepenseRegularisation = {
+    const depenseApiResponse: DepenseReporting = {
       id: `dep-${Date.now()}`,
       bienId: payload.bienId,
       date: payload.date,
@@ -1684,11 +1604,10 @@ export default function ModuleRegularisationCharges() {
       categorieLabel: categorie.label,
       sousCategorieId: sousCategorie.id,
       sousCategorieLabel: sousCategorie.label,
-      montantAnnuel: payload.montantAnnuel,
-      commentaire: payload.commentaire,
+      montant: payload.montant,
       justificatif: payload.justificatif,
-      statut: "enregistree",
-      origine: "regularisation",
+      commentaire: payload.commentaire,
+      origine: "reporting",
       syncStatus: "synchronise",
       canView: true,
       canEdit: true,
@@ -1699,15 +1618,16 @@ export default function ModuleRegularisationCharges() {
 
     addHistory(
       payload.bienId,
-      "Dépense créée et transmise à l’API",
-      `${sousCategorie.label} — ${formatEuros(payload.montantAnnuel)}`
+      "Dépense créée dans Reporting et transmise à l’API",
+      undefined,
+      `${sousCategorie.label} — ${formatEuros(payload.montant)}`
     );
 
     setView({ name: "detail", bienId: payload.bienId });
     setActiveTab("depenses");
 
     alert(
-      "Dépense enregistrée. Le Back-End qualifiera la charge et synchronisera le Reporting."
+      "Dépense enregistrée. Le Back-End synchronise cette dépense avec Régularisation des charges si nécessaire."
     );
   };
 
@@ -1718,7 +1638,7 @@ export default function ModuleRegularisationCharges() {
   }) => {
     if (!selectedBien) return;
 
-    const newSubcategory: SousCategorieCharge = {
+    const newSubcategory: SousCategorieDepense = {
       id: `custom-${Date.now()}`,
       label: payload.label,
       description: payload.description,
@@ -1740,104 +1660,47 @@ export default function ModuleRegularisationCharges() {
 
     addHistory(
       selectedBien.id,
-      "Sous-catégorie personnalisée créée",
-      `${payload.label}`
+      "Sous-catégorie personnalisée créée et synchronisée avec Régularisation des charges",
+      undefined,
+      payload.label
     );
 
     setView({ name: "form_depense", bienId: selectedBien.id });
 
-    alert("Sous-catégorie créée. Elle est immédiatement disponible dans le formulaire.");
+    alert(
+      "Sous-catégorie créée. Elle est immédiatement disponible et synchronisée avec Régularisation des charges."
+    );
   };
 
-  const handleCalculateRegularisation = (bien: BienRegularisation) => {
-    const apiResult: ResultatRegularisation = {
-      id: `reg-${Date.now()}`,
-      bienId: bien.id,
-      annee: new Date().getFullYear(),
-      statut: "calculee",
-      dateCalcul: getToday(),
-      chargesRecuperables: bien.typeBien === "immeuble_rapport" ? 1200 : 180,
-      chargesNonRecuperables: bien.typeBien === "immeuble_rapport" ? 5000 : 0,
-      provisionsAppelees: bien.typeBien === "immeuble_rapport" ? 2060 : 960,
-      montantRegularisation: bien.typeBien === "immeuble_rapport" ? -860 : -780,
-      detailLots:
-        bien.typeBien === "immeuble_rapport"
-          ? lots
-              .filter(lot => lot.immeubleId === bien.id)
-              .map(lot => ({
-                lotId: lot.id,
-                lotReference: lot.reference,
-                lotNom: lot.nom,
-                locataire: lot.locataire,
-                chargesRecuperables: 300,
-                chargesNonRecuperables: 1250,
-                provisionsAppelees: lot.locataire === "Vacant" ? 0 : 680,
-                montantRegularisation: lot.locataire === "Vacant" ? 300 : -380,
-              }))
-          : undefined,
-    };
-
-    setRegularisations(prev => [...prev, apiResult]);
-
+  const handleExportPDF = (bien: BienReporting) => {
     addHistory(
       bien.id,
-      "Demande de calcul transmise à l’API",
-      `Régularisation ${apiResult.annee} calculée`
+      "Export PDF demandé",
+      undefined,
+      `Export PDF Reporting — ${bien.nom}`
     );
-
-    setActiveTab("regularisations");
-
-    alert("Calcul demandé. Le résultat affiché correspond au retour simulé de l’API.");
-  };
-
-  const handleValidateRegularisation = (regularisationId: string) => {
-    setRegularisations(prev =>
-      prev.map(reg =>
-        reg.id === regularisationId
-          ? {
-              ...reg,
-              statut: "validee",
-              reference: `REG-${reg.annee}-${String(prev.length + 1).padStart(6, "0")}`,
-              dateValidation: getToday(),
-            }
-          : reg
-      )
-    );
-
-    const regularisation = regularisations.find(reg => reg.id === regularisationId);
-
-    if (regularisation) {
-      addHistory(
-        regularisation.bienId,
-        "Régularisation validée via API",
-        `Régularisation ${regularisation.annee}`
-      );
-    }
 
     alert(
-      "Régularisation validée. Le Back-End générera le document officiel et synchronisera Quittances, Locataires, Espace locataire, Reporting et Dashboard."
+      "Export PDF simulé. En production, le Front téléchargera le fichier retourné par l’API."
     );
   };
 
-  const handleUpdateLots = (updatedLots: LotRegularisation[]) => {
-    setLots(updatedLots);
-
-    if (selectedBien) {
-      addHistory(
-        selectedBien.id,
-        "Modification des tantièmes transmise à l’API",
-        "Lots mis à jour"
-      );
-    }
+  const handleExportExcel = (bien: BienReporting) => {
+    addHistory(
+      bien.id,
+      "Export Excel demandé",
+      undefined,
+      `Export Excel Reporting — ${bien.nom}`
+    );
 
     alert(
-      "Modification transmise à l’API. Les contrôles de cohérence des tantièmes sont gérés par le Back-End."
+      "Export Excel simulé. En production, le Front téléchargera le fichier retourné par l’API."
     );
   };
 
   if (view.name === "form_depense" && selectedBien) {
     return (
-      <FormDepense
+      <FormDepenseReporting
         bien={selectedBien}
         categories={categories}
         onBack={() => setView({ name: "detail", bienId: selectedBien.id })}
@@ -1855,7 +1718,7 @@ export default function ModuleRegularisationCharges() {
 
   if (view.name === "form_sous_categorie" && selectedBien && selectedCategorie) {
     return (
-      <FormSousCategoriePersonnalisee
+      <FormSousCategorieReporting
         categorie={selectedCategorie}
         onBack={() => setView({ name: "form_depense", bienId: selectedBien.id })}
         onSave={handleSaveCustomSubcategory}
@@ -1864,39 +1727,35 @@ export default function ModuleRegularisationCharges() {
   }
 
   if (view.name === "detail" && selectedBien) {
+    const revenusBien = revenus.filter(revenu => revenu.bienId === selectedBien.id);
     const depensesBien = depenses.filter(depense => depense.bienId === selectedBien.id);
-    const regularisationsBien = regularisations.filter(
-      regularisation => regularisation.bienId === selectedBien.id
-    );
     const historiqueBien = historique.filter(item => item.bienId === selectedBien.id);
-    const lotsBien = lots.filter(lot => lot.immeubleId === selectedBien.id);
+    const syntheseBien = syntheses.find(item => item.bienId === selectedBien.id);
 
     return (
-      <VueDetailBien
+      <VueDetailReporting
         bien={selectedBien}
-        lots={lotsBien}
+        revenus={revenusBien}
         depenses={depensesBien}
-        regularisations={regularisationsBien}
         historique={historiqueBien}
+        synthese={syntheseBien}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onBack={() => setView({ name: "liste" })}
         onAddDepense={() => setView({ name: "form_depense", bienId: selectedBien.id })}
-        onCalculateRegularisation={() => handleCalculateRegularisation(selectedBien)}
-        onValidateRegularisation={handleValidateRegularisation}
-        onUpdateLots={handleUpdateLots}
+        onExportPDF={() => handleExportPDF(selectedBien)}
+        onExportExcel={() => handleExportExcel(selectedBien)}
       />
     );
   }
 
   return (
-    <VueListeBiens
+    <VueListeBiensReporting
       biens={biens}
-      depenses={depenses}
-      regularisations={regularisations}
-      onSelectBien={bienId => {
+      syntheses={syntheses}
+      onOpen={bienId => {
         setView({ name: "detail", bienId });
-        setActiveTab("depenses");
+        setActiveTab("revenus");
       }}
     />
   );

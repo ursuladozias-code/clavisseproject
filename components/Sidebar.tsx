@@ -4,10 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-import { Menu, X, LayoutDashboard, Building2, Users, FileText, Receipt, FileCheck, Shield, UserCircle, Settings, Zap, TrendingUp, FileSearch, Home, CreditCard } from 'lucide-react'
+import { Menu, X, LayoutDashboard, Building2, Users, FileText, Receipt, FileCheck, Shield, UserCircle, Settings, Zap, TrendingUp, FileSearch, Home, CreditCard, Key } from 'lucide-react'
 
 const mainLinks = [
   { href: '/dashboard',                  label: 'Dashboard',                  icon: LayoutDashboard },
+  { href: '/proprietaires',        label: 'Propriétaires',                 icon: Key},
   { href: '/biens',             label: 'Mes biens',                  icon: Building2 },
   { href: '/locataires',        label: 'Locataires',                 icon: Users },
   { href: '/baux',              label: 'Baux',                       icon: FileText },
@@ -17,7 +18,7 @@ const mainLinks = [
   { href: '/indexation',        label: 'Indexation des loyers',      icon: TrendingUp },
   { href: '/regularisation',    label: 'Régularisation des charges', icon: Receipt },
   { href: '/etats-des-lieux',   label: 'États des lieux',            icon: FileSearch },
-  { href: '/comptabilite',          label: 'Comptabilité',                   icon: CreditCard },
+  { href: '/reporting',          label: 'Reporting',                   icon: CreditCard },
   { href: '/espace-locataire',  label: 'Espace locataire',           icon: Home },
 ]
 
