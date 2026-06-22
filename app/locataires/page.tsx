@@ -1233,6 +1233,17 @@ function FormLocataire({
 }) {
   const isEdit = !!initial;
   const lockedBySignedBail = hasSignedBail(bauxAssocies);
+  const steps = [
+    { label: "Identité", emoji: "🪪" },
+    { label: "Coordonnées", emoji: "📍" },
+    { label: "Situation", emoji: "👪" },
+    { label: "Profession", emoji: "💼" },
+    { label: "Garants", emoji: "🛡️" },
+    { label: "Assurance", emoji: "🏠" },
+    { label: "Documents", emoji: "📎" },
+    { label: "Validation", emoji: "✓" },
+  ];
+  const [step, setStep] = useState(0);
 
   const [civilite, setCivilite] = useState<Civilite>(initial?.civilite || "Madame");
   const [nom, setNom] = useState(initial?.nom || "");
@@ -1242,97 +1253,100 @@ function FormLocataire({
   const [nationalite, setNationalite] = useState(initial?.nationalite || "");
 
   const [adresseActuelle, setAdresseActuelle] = useState<Adresse>(
-    initial?.adresseActuelle || { ...adresseVide }
+    initial?.adresseActuelle || { ...adresseVide },
   );
-
-  const [telephonePrincipal, setTelephonePrincipal] = useState(
-    initial?.telephonePrincipal || ""
-  );
-  const [telephoneSecondaire, setTelephoneSecondaire] = useState(
-    initial?.telephoneSecondaire || ""
-  );
+  const [telephonePrincipal, setTelephonePrincipal] = useState(initial?.telephonePrincipal || "");
+  const [telephoneSecondaire, setTelephoneSecondaire] = useState(initial?.telephoneSecondaire || "");
   const [email, setEmail] = useState(initial?.email || "");
 
   const [situationFamiliale, setSituationFamiliale] = useState<SituationFamiliale>(
-    initial?.situationFamiliale || "celibataire"
+    initial?.situationFamiliale || "celibataire",
   );
-  const [nombreOccupants, setNombreOccupants] = useState(
-    initial?.nombreOccupants || 1
-  );
+  const [nombreOccupants, setNombreOccupants] = useState(initial?.nombreOccupants || 1);
 
   const [profession, setProfession] = useState(initial?.profession || "");
   const [employeur, setEmployeur] = useState(initial?.employeur || "");
   const [typeContrat, setTypeContrat] = useState<TypeContratTravail>(
-    initial?.typeContrat || "CDI"
+    initial?.typeContrat || "CDI",
   );
   const [revenusMensuelsNets, setRevenusMensuelsNets] = useState(
-    initial?.revenusMensuelsNets || 0
+    initial?.revenusMensuelsNets || 0,
   );
 
   const [documents] = useState<DocumentItem[]>(
     initial?.documents || [
-      {
-        id: "doc-identite",
-        nom: "Pièce d’identité",
-        categorie: "identite",
-        obligatoire: true,
-      },
-      {
-        id: "doc-revenus",
-        nom: "Justificatifs de revenus",
-        categorie: "revenus",
-        multiple: true,
-      },
-      {
-        id: "doc-fiscal",
-        nom: "Avis d’imposition",
-        categorie: "fiscal",
-      },
-      {
-        id: "doc-domicile",
-        nom: "Justificatif de domicile",
-        categorie: "domicile",
-      },
-      {
-        id: "doc-complementaires",
-        nom: "Documents complémentaires",
-        categorie: "complementaire",
-        multiple: true,
-      },
-    ]
+      { id: "doc-identite", nom: "Pièce d’identité", categorie: "identite", obligatoire: true },
+      { id: "doc-revenus", nom: "Justificatifs de revenus", categorie: "revenus", multiple: true },
+      { id: "doc-fiscal", nom: "Avis d’imposition", categorie: "fiscal" },
+      { id: "doc-domicile", nom: "Justificatif de domicile", categorie: "domicile" },
+      { id: "doc-complementaires", nom: "Documents complémentaires", categorie: "complementaire", multiple: true },
+    ],
   );
 
   const [garants, setGarants] = useState<Garant[]>(initial?.garants || []);
-
-  const [assuranceHabitation, setAssuranceHabitation] =
-    useState<AssuranceHabitation>(
-      initial?.assuranceHabitation || {
-        compagnie: "",
-        numeroContrat: "",
-        dateEffet: "",
-        dateEcheance: "",
-        attestation: null,
-      }
-    );
-
-  const emailExists = locatairesExistants.some(
-    locataire =>
-      locataire.email.toLowerCase() === email.toLowerCase() &&
-      locataire.id !== initial?.id
+  const [assuranceHabitation, setAssuranceHabitation] = useState<AssuranceHabitation>(
+    initial?.assuranceHabitation || {
+      compagnie: "",
+      numeroContrat: "",
+      dateEffet: "",
+      dateEcheance: "",
+      attestation: null,
+    },
   );
 
-  const canSave = nom && prenom && email && !emailExists;
+  const emailExists = locatairesExistants.some(
+    (locataire) =>
+      locataire.email.toLowerCase() === email.toLowerCase() &&
+      locataire.id !== initial?.id,
+  );
+
+  const stepIsValid = useMemo(() => {
+    switch (step) {
+      case 0:
+        return Boolean(civilite && nom.trim() && prenom.trim());
+      case 1:
+        return Boolean(
+          adresseActuelle.numeroVoie &&
+            adresseActuelle.typeVoie &&
+            adresseActuelle.nomVoie &&
+            adresseActuelle.codePostal &&
+            adresseActuelle.ville &&
+            adresseActuelle.pays &&
+            telephonePrincipal.trim() &&
+            email.trim() &&
+            !emailExists,
+        );
+      case 2:
+      case 3:
+      case 4:
+      case 5:
+      case 6:
+      case 7:
+        return true;
+      default:
+        return false;
+    }
+  }, [
+    step,
+    civilite,
+    nom,
+    prenom,
+    adresseActuelle,
+    telephonePrincipal,
+    email,
+    emailExists,
+  ]);
 
   const handleSave = () => {
+    if (!nom.trim() || !prenom.trim() || !email.trim() || emailExists) return;
     const now = getToday();
-
     const historique: HistoriqueItem[] = [
       ...(initial?.historique || []),
       ...(isEdit
         ? [
             {
               id: `hist-${Date.now()}`,
-              date: getToday(),
+              date: now,
               heure: getNowTime(),
               utilisateur: "Utilisateur connecté",
               champ: "Fiche locataire",
@@ -1343,42 +1357,36 @@ function FormLocataire({
         : []),
     ];
 
-    const locataire: Locataire = {
+    onSave({
       id: initial?.id || `loc-${Date.now()}`,
       reference,
       statut: initial?.statut || "actif",
-
       civilite,
       nom,
       prenom,
       dateNaissance,
       lieuNaissance,
       nationalite,
-
       adresseActuelle,
       telephonePrincipal,
       telephoneSecondaire,
       email,
-
       situationFamiliale,
       nombreOccupants,
-
       profession,
       employeur,
       typeContrat,
       revenusMensuelsNets,
-
       documents,
       garants,
       assuranceHabitation,
-
       historique,
       createdAt: initial?.createdAt || now,
       updatedAt: now,
-    };
-
-    onSave(locataire);
+    });
   };
+
+  const lastStep = step === steps.length - 1;
 
   return (
     <div
@@ -1397,345 +1405,269 @@ function FormLocataire({
           >
             ← Retour
           </button>
-
           <h1 className="text-xl font-black" style={{ color: "#1e293b" }}>
             👤 {isEdit ? "Modifier" : "Nouveau"} locataire
           </h1>
-
           <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
             Référence locataire : {reference}
           </p>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-        {lockedBySignedBail && (
-          <div
-            className="p-4 rounded-3xl"
-            style={{ backgroundColor: "#fef9c3", border: "1px solid #fde68a" }}
-          >
-            <p className="text-sm font-bold" style={{ color: "#854d0e" }}>
-              🔒 Ce locataire est associé à un bail signé. Les informations reprises
-              dans le bail sont verrouillées afin de garantir la cohérence juridique
-              des documents signés.
-            </p>
-          </div>
-        )}
-
-        <SectionCard>
-          <SectionTitle emoji="🪪" title="Informations d’identité" />
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <FormInput label="Référence" value={reference} readOnly />
-
-            <FormSelect
-              label="Civilité"
-              value={civilite}
-              onChange={value => setCivilite(value as Civilite)}
-              disabled={lockedBySignedBail}
-              required
-              options={[
-                { value: "Monsieur", label: "Monsieur" },
-                { value: "Madame", label: "Madame" },
-              ]}
-            />
-
-            <FormInput
-              label="Nom"
-              value={nom}
-              onChange={setNom}
-              readOnly={lockedBySignedBail}
-              required
-            />
-
-            <FormInput
-              label="Prénom"
-              value={prenom}
-              onChange={setPrenom}
-              readOnly={lockedBySignedBail}
-              required
-            />
-
-            <FormInput
-              label="Date de naissance"
-              value={dateNaissance}
-              onChange={setDateNaissance}
-              type="date"
-              readOnly={lockedBySignedBail}
-            />
-
-            <FormInput
-              label="Lieu de naissance"
-              value={lieuNaissance}
-              onChange={setLieuNaissance}
-              readOnly={lockedBySignedBail}
-            />
-
-            <div className="sm:col-span-2">
-              <FormInput
-                label="Nationalité"
-                value={nationalite}
-                onChange={setNationalite}
-                readOnly={lockedBySignedBail}
-              />
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard>
-          <SectionTitle emoji="📍" title="Adresse actuelle" />
-
-          <AdresseForm
-            adresse={adresseActuelle}
-            setAdresse={setAdresseActuelle}
-            locked={lockedBySignedBail}
-          />
-
-          <div className="grid sm:grid-cols-2 gap-4 mt-4">
-            <FormInput
-              label="Téléphone principal"
-              value={telephonePrincipal}
-              onChange={setTelephonePrincipal}
-            />
-
-            <FormInput
-              label="Téléphone secondaire"
-              value={telephoneSecondaire}
-              onChange={setTelephoneSecondaire}
-            />
-
-            <div className="sm:col-span-2">
-              <FormInput
-                label="Adresse e-mail"
-                value={email}
-                onChange={setEmail}
-                type="email"
-                required
-              />
-
-              {emailExists && (
-                <p className="text-xs font-bold mt-1" style={{ color: "#ef4444" }}>
-                  Cette adresse e-mail est déjà utilisée par un autre locataire.
-                </p>
-              )}
-
-              <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
-                L’adresse e-mail sert d’identifiant principal pour l’espace
-                locataire, les quittances et les notifications.
-              </p>
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard>
-          <SectionTitle emoji="👪" title="Situation personnelle" />
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <FormSelect
-              label="Situation familiale"
-              value={situationFamiliale}
-              disabled={lockedBySignedBail}
-              onChange={value => setSituationFamiliale(value as SituationFamiliale)}
-              options={[
-                { value: "celibataire", label: "Célibataire" },
-                { value: "marie", label: "Marié" },
-                { value: "pacse", label: "Pacsé" },
-                { value: "divorce", label: "Divorcé" },
-                { value: "veuf", label: "Veuf" },
-              ]}
-            />
-
-            <FormInput
-              label="Nombre d’occupants"
-              value={nombreOccupants}
-              type="number"
-              readOnly={lockedBySignedBail}
-              onChange={value => setNombreOccupants(Number(value))}
-            />
-          </div>
-        </SectionCard>
-
-        <SectionCard>
-          <SectionTitle emoji="💼" title="Situation professionnelle" />
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <FormInput
-              label="Profession"
-              value={profession}
-              readOnly={lockedBySignedBail}
-              onChange={setProfession}
-            />
-
-            <FormInput
-              label="Employeur"
-              value={employeur}
-              readOnly={lockedBySignedBail}
-              onChange={setEmployeur}
-            />
-
-            <FormSelect
-              label="Type de contrat"
-              value={typeContrat}
-              disabled={lockedBySignedBail}
-              onChange={value => setTypeContrat(value as TypeContratTravail)}
-              options={[
-                "CDI",
-                "CDD",
-                "Fonctionnaire",
-                "Indépendant",
-                "Retraité",
-                "Étudiant",
-                "Sans emploi",
-                "Autre",
-              ].map(value => ({ value, label: value }))}
-            />
-
-            <FormInput
-              label="Revenus mensuels nets"
-              value={revenusMensuelsNets}
-              type="number"
-              readOnly={lockedBySignedBail}
-              onChange={value => setRevenusMensuelsNets(Number(value))}
-            />
-          </div>
-        </SectionCard>
-
-        <GarantsSection
-          garants={garants}
-          setGarants={setGarants}
-          locked={lockedBySignedBail}
-        />
-
-        <SectionCard>
-          <SectionTitle emoji="🏠" title="Assurance habitation" />
-
-          <div className="flex items-center gap-2 mb-4">
-            <StatutAssuranceBadge statut={calculerStatutAssurance(assuranceHabitation)} />
-            <p className="text-xs font-bold" style={{ color: "#94a3b8" }}>
-              L’assurance reste modifiable à tout moment.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <FormInput
-              label="Compagnie d’assurance"
-              value={assuranceHabitation.compagnie}
-              onChange={value =>
-                setAssuranceHabitation({
-                  ...assuranceHabitation,
-                  compagnie: value,
-                })
-              }
-            />
-
-            <FormInput
-              label="Numéro de contrat"
-              value={assuranceHabitation.numeroContrat}
-              onChange={value =>
-                setAssuranceHabitation({
-                  ...assuranceHabitation,
-                  numeroContrat: value,
-                })
-              }
-            />
-
-            <FormInput
-              label="Date d’effet"
-              value={assuranceHabitation.dateEffet}
-              type="date"
-              onChange={value =>
-                setAssuranceHabitation({
-                  ...assuranceHabitation,
-                  dateEffet: value,
-                })
-              }
-            />
-
-            <FormInput
-              label="Date d’échéance"
-              value={assuranceHabitation.dateEcheance}
-              type="date"
-              onChange={value =>
-                setAssuranceHabitation({
-                  ...assuranceHabitation,
-                  dateEcheance: value,
-                })
-              }
-            />
-          </div>
-
-          <div
-            className="mt-4 flex items-center justify-between p-3 rounded-2xl"
-            style={{ backgroundColor: "#f8fafc" }}
-          >
-            <div>
-              <p className="text-sm font-bold" style={{ color: "#1e293b" }}>
-                📄 Attestation d’assurance
-              </p>
-              <p className="text-xs" style={{ color: "#94a3b8" }}>
-                Peut être ajoutée ou renouvelée après signature du bail.
-              </p>
-            </div>
-
-            <label
-              className="px-3 py-1 rounded-xl text-xs font-bold cursor-pointer"
-              style={{ backgroundColor: "#fff7ed", color: "#f97316" }}
-            >
-              + Ajouter
-              <input type="file" className="hidden" />
-            </label>
-          </div>
-        </SectionCard>
-
-        <SectionCard>
-          <SectionTitle emoji="📎" title="Documents du locataire" />
-
-          <div className="space-y-2">
-            {documents.map(document => (
-              <div
-                key={document.id}
-                className="flex items-center justify-between p-3 rounded-2xl"
-                style={{ backgroundColor: "#f8fafc" }}
-              >
-                <div>
-                  <p className="text-sm font-bold" style={{ color: "#1e293b" }}>
-                    📄 {document.nom}
-                  </p>
-                  <p className="text-xs" style={{ color: "#94a3b8" }}>
-                    {document.obligatoire ? "Obligatoire" : "Facultatif"}
-                    {document.multiple ? " · Téléversement multiple" : ""}
-                  </p>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        <div className="w-full overflow-x-auto pb-2">
+          <div className="flex items-center min-w-max">
+            {steps.map((item, index) => (
+              <div key={item.label} className="flex items-center">
+                <div className="flex flex-col items-center gap-1">
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold"
+                    style={{
+                      backgroundColor:
+                        index < step ? "#22c55e" : index === step ? "#f97316" : "#e2e8f0",
+                      color: index <= step ? "#fff" : "#94a3b8",
+                    }}
+                  >
+                    {index < step ? "✓" : item.emoji}
+                  </div>
+                  <span
+                    className="text-[11px] font-bold whitespace-nowrap hidden sm:block"
+                    style={{
+                      color:
+                        index === step ? "#f97316" : index < step ? "#16a34a" : "#94a3b8",
+                    }}
+                  >
+                    {item.label}
+                  </span>
                 </div>
+                {index < steps.length - 1 ? (
+                  <div
+                    className="w-8 sm:w-12 h-0.5 mx-1 sm:mx-2 mb-4 sm:mb-5"
+                    style={{ backgroundColor: index < step ? "#22c55e" : "#e2e8f0" }}
+                  />
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
 
-                <label
-                  className="px-3 py-1 rounded-xl text-xs font-bold cursor-pointer"
-                  style={{ backgroundColor: "#eff6ff", color: "#3b82f6" }}
-                >
+        <div className="mt-4">
+          {lockedBySignedBail && (
+            <div
+              className="p-4 rounded-3xl mb-4"
+              style={{ backgroundColor: "#fef9c3", border: "1px solid #fde68a" }}
+            >
+              <p className="text-sm font-bold" style={{ color: "#854d0e" }}>
+                🔒 Ce locataire est associé à un bail signé. Les informations reprises
+                dans le bail sont verrouillées afin de garantir la cohérence juridique
+                des documents signés.
+              </p>
+            </div>
+          )}
+
+          {step === 0 && (
+            <SectionCard>
+              <SectionTitle emoji="🪪" title="Informations d’identité" />
+              <div className="grid sm:grid-cols-2 gap-4">
+                <FormInput label="Référence" value={reference} readOnly />
+                <FormSelect
+                  label="Civilité"
+                  value={civilite}
+                  onChange={(value) => setCivilite(value as Civilite)}
+                  disabled={lockedBySignedBail}
+                  required
+                  options={[
+                    { value: "Monsieur", label: "Monsieur" },
+                    { value: "Madame", label: "Madame" },
+                  ]}
+                />
+                <FormInput label="Nom" value={nom} onChange={setNom} readOnly={lockedBySignedBail} required />
+                <FormInput label="Prénom" value={prenom} onChange={setPrenom} readOnly={lockedBySignedBail} required />
+                <FormInput label="Date de naissance" value={dateNaissance} onChange={setDateNaissance} type="date" readOnly={lockedBySignedBail} />
+                <FormInput label="Lieu de naissance" value={lieuNaissance} onChange={setLieuNaissance} readOnly={lockedBySignedBail} />
+                <div className="sm:col-span-2">
+                  <FormInput label="Nationalité" value={nationalite} onChange={setNationalite} readOnly={lockedBySignedBail} />
+                </div>
+              </div>
+            </SectionCard>
+          )}
+
+          {step === 1 && (
+            <SectionCard>
+              <SectionTitle emoji="📍" title="Adresse et coordonnées" />
+              <AdresseForm adresse={adresseActuelle} setAdresse={setAdresseActuelle} locked={lockedBySignedBail} />
+              <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                <FormInput label="Téléphone principal" value={telephonePrincipal} onChange={setTelephonePrincipal} required />
+                <FormInput label="Téléphone secondaire" value={telephoneSecondaire} onChange={setTelephoneSecondaire} />
+                <div className="sm:col-span-2">
+                  <FormInput label="Adresse e-mail" value={email} onChange={setEmail} type="email" required />
+                  {emailExists ? (
+                    <p className="text-xs font-bold mt-1" style={{ color: "#ef4444" }}>
+                      Cette adresse e-mail est déjà utilisée par un autre locataire.
+                    </p>
+                  ) : (
+                    <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
+                      L’adresse e-mail sert d’identifiant principal pour l’espace locataire,
+                      les quittances et les notifications.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </SectionCard>
+          )}
+
+          {step === 2 && (
+            <SectionCard>
+              <SectionTitle emoji="👪" title="Situation personnelle" />
+              <div className="grid sm:grid-cols-2 gap-4">
+                <FormSelect
+                  label="Situation familiale"
+                  value={situationFamiliale}
+                  disabled={lockedBySignedBail}
+                  onChange={(value) => setSituationFamiliale(value as SituationFamiliale)}
+                  options={[
+                    { value: "celibataire", label: "Célibataire" },
+                    { value: "marie", label: "Marié" },
+                    { value: "pacse", label: "Pacsé" },
+                    { value: "divorce", label: "Divorcé" },
+                    { value: "veuf", label: "Veuf" },
+                  ]}
+                />
+                <FormInput
+                  label="Nombre d’occupants"
+                  value={nombreOccupants}
+                  type="number"
+                  readOnly={lockedBySignedBail}
+                  onChange={(value) => setNombreOccupants(Number(value) || 0)}
+                />
+              </div>
+            </SectionCard>
+          )}
+
+          {step === 3 && (
+            <SectionCard>
+              <SectionTitle emoji="💼" title="Situation professionnelle" />
+              <div className="grid sm:grid-cols-2 gap-4">
+                <FormInput label="Profession" value={profession} readOnly={lockedBySignedBail} onChange={setProfession} />
+                <FormInput label="Employeur" value={employeur} readOnly={lockedBySignedBail} onChange={setEmployeur} />
+                <FormSelect
+                  label="Type de contrat"
+                  value={typeContrat}
+                  disabled={lockedBySignedBail}
+                  onChange={(value) => setTypeContrat(value as TypeContratTravail)}
+                  options={["CDI", "CDD", "Fonctionnaire", "Indépendant", "Retraité", "Étudiant", "Sans emploi", "Autre"].map((value) => ({ value, label: value }))}
+                />
+                <FormInput
+                  label="Revenus mensuels nets"
+                  value={revenusMensuelsNets}
+                  type="number"
+                  readOnly={lockedBySignedBail}
+                  onChange={(value) => setRevenusMensuelsNets(Number(value) || 0)}
+                />
+              </div>
+            </SectionCard>
+          )}
+
+          {step === 4 && <GarantsSection garants={garants} setGarants={setGarants} locked={lockedBySignedBail} />}
+
+          {step === 5 && (
+            <SectionCard>
+              <SectionTitle emoji="🏠" title="Assurance habitation" />
+              <div className="flex items-center gap-2 mb-4">
+                <StatutAssuranceBadge statut={calculerStatutAssurance(assuranceHabitation)} />
+                <p className="text-xs font-bold" style={{ color: "#94a3b8" }}>
+                  L’assurance reste modifiable à tout moment.
+                </p>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <FormInput label="Compagnie d’assurance" value={assuranceHabitation.compagnie} onChange={(compagnie) => setAssuranceHabitation({ ...assuranceHabitation, compagnie })} />
+                <FormInput label="Numéro de contrat" value={assuranceHabitation.numeroContrat} onChange={(numeroContrat) => setAssuranceHabitation({ ...assuranceHabitation, numeroContrat })} />
+                <FormInput label="Date d’effet" value={assuranceHabitation.dateEffet} type="date" onChange={(dateEffet) => setAssuranceHabitation({ ...assuranceHabitation, dateEffet })} />
+                <FormInput label="Date d’échéance" value={assuranceHabitation.dateEcheance} type="date" onChange={(dateEcheance) => setAssuranceHabitation({ ...assuranceHabitation, dateEcheance })} />
+              </div>
+              <div className="mt-4 flex items-center justify-between p-3 rounded-2xl" style={{ backgroundColor: "#f8fafc" }}>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: "#1e293b" }}>📄 Attestation d’assurance</p>
+                  <p className="text-xs" style={{ color: "#94a3b8" }}>Peut être ajoutée ou renouvelée après signature du bail.</p>
+                </div>
+                <label className="px-3 py-1 rounded-xl text-xs font-bold cursor-pointer" style={{ backgroundColor: "#fff7ed", color: "#f97316" }}>
                   + Ajouter
                   <input type="file" className="hidden" />
                 </label>
               </div>
-            ))}
+            </SectionCard>
+          )}
+
+          {step === 6 && (
+            <SectionCard>
+              <SectionTitle emoji="📎" title="Documents du locataire" />
+              <div className="space-y-2">
+                {documents.map((document) => (
+                  <div key={document.id} className="flex items-center justify-between p-3 rounded-2xl" style={{ backgroundColor: "#f8fafc" }}>
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: "#1e293b" }}>📄 {document.nom}</p>
+                      <p className="text-xs" style={{ color: "#94a3b8" }}>
+                        {document.obligatoire ? "Obligatoire" : "Facultatif"}
+                        {document.multiple ? " · Téléversement multiple" : ""}
+                      </p>
+                    </div>
+                    <label className="px-3 py-1 rounded-xl text-xs font-bold cursor-pointer" style={{ backgroundColor: "#eff6ff", color: "#3b82f6" }}>
+                      + Ajouter
+                      <input type="file" className="hidden" />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+
+          {step === 7 && (
+            <SectionCard>
+              <SectionTitle emoji="✓" title="Validation" />
+              <div className="grid sm:grid-cols-2 gap-3">
+                <InfoRow label="Référence" value={reference} />
+                <InfoRow label="Locataire" value={`${prenom} ${nom}`.trim() || "—"} />
+                <InfoRow label="E-mail" value={email || "—"} />
+                <InfoRow label="Téléphone" value={telephonePrincipal || "—"} />
+                <InfoRow label="Ville" value={adresseActuelle.ville || "—"} />
+                <InfoRow label="Profession" value={profession || "—"} />
+                <InfoRow label="Garants" value={garants.length} />
+                <InfoRow label="Documents" value={documents.length} />
+              </div>
+            </SectionCard>
+          )}
+
+          <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 mt-6 pt-5" style={{ borderTop: "2px solid #f1f5f9" }}>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={onCancel}
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl text-sm font-bold"
+                style={{ backgroundColor: "#f8fafc", color: "#94a3b8", border: "2px solid #e2e8f0" }}
+              >
+                Annuler
+              </button>
+              {step > 0 && (
+                <button
+                  onClick={() => setStep((current) => Math.max(0, current - 1))}
+                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl text-sm font-bold"
+                  style={{ backgroundColor: "#fff", color: "#64748b", border: "2px solid #e2e8f0" }}
+                >
+                  ← Précédent
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                if (lastStep) handleSave();
+                else if (stepIsValid) setStep((current) => Math.min(steps.length - 1, current + 1));
+              }}
+              disabled={!stepIsValid}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-2xl text-sm font-extrabold text-white transition-all disabled:opacity-40"
+              style={{ background: stepIsValid ? "linear-gradient(135deg,#f97316,#fb923c)" : "#e2e8f0" }}
+            >
+              {lastStep ? "✓ Enregistrer le locataire" : "Suivant →"}
+            </button>
           </div>
-        </SectionCard>
-
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-3 rounded-2xl text-sm font-bold border-2"
-            style={{ borderColor: "#e2e8f0", color: "#64748b" }}
-          >
-            Annuler
-          </button>
-
-          <button
-            onClick={handleSave}
-            disabled={!canSave}
-            className="flex-1 py-3 rounded-2xl text-white text-sm font-extrabold shadow disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)" }}
-          >
-            ✅ Enregistrer le locataire
-          </button>
         </div>
       </div>
     </div>

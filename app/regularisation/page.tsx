@@ -7,6 +7,8 @@ import { useMemo, useState, type ReactNode } from "react";
 // ============================================================
 
 type TypeBien = "bien_individuel" | "immeuble_rapport";
+type NiveauDepense = "bien_individuel" | "immeuble_rapport" | "lot_immeuble";
+type ModeRepartitionCharges = "egalitaire" | "surface" | "cle_repartition" | "tantiemes";
 type StatutBien = "vacant" | "occupe" | "archive";
 type StatutDepense = "brouillon" | "enregistree" | "verrouillee";
 type StatutSync = "synchronise" | "en_attente" | "erreur";
@@ -16,8 +18,8 @@ type OngletDetail = "depenses" | "lots" | "regularisations" | "historique";
 type ViewState =
   | { name: "liste" }
   | { name: "detail"; bienId: string }
-  | { name: "form_depense"; bienId: string }
-  | { name: "form_sous_categorie"; bienId: string; categorieId: string };
+  | { name: "form_depense"; bienId: string; lotId?: string }
+  | { name: "form_sous_categorie"; bienId: string; categorieId: string; lotId?: string };
 
 interface BienRegularisation {
   id: string;
@@ -28,6 +30,7 @@ interface BienRegularisation {
   statut: StatutBien;
   locataireActuel?: string;
   totalTantiemes?: 100 | 1000 | 10000 | 100000;
+  modeRepartitionCharges?: ModeRepartitionCharges;
 }
 
 interface LotRegularisation {
@@ -59,6 +62,10 @@ interface SousCategorieCharge {
 interface DepenseRegularisation {
   id: string;
   bienId: string;
+  lotId?: string;
+  lotReference?: string;
+  lotNom?: string;
+  niveau: NiveauDepense;
   date: string;
   categorieId: string;
   categorieLabel: string;
@@ -374,6 +381,7 @@ const biensMock: BienRegularisation[] = [
     typeBien: "immeuble_rapport",
     statut: "occupe",
     totalTantiemes: 1000,
+    modeRepartitionCharges: "tantiemes",
   },
 ];
 
@@ -424,6 +432,7 @@ const depensesMock: DepenseRegularisation[] = [
   {
     id: "dep001",
     bienId: "bi001",
+    niveau: "bien_individuel",
     date: "2026-01-12",
     categorieId: "fiscalite",
     categorieLabel: "VIII – Fiscalité et redevances",
@@ -442,6 +451,7 @@ const depensesMock: DepenseRegularisation[] = [
   {
     id: "dep002",
     bienId: "im001",
+    niveau: "immeuble_rapport",
     date: "2026-02-03",
     categorieId: "parties_communes",
     categorieLabel: "IV – Parties communes",
@@ -516,6 +526,17 @@ function getNowTime() {
 
 function getBienTypeLabel(type: TypeBien) {
   return type === "immeuble_rapport" ? "Immeuble de rapport" : "Bien individuel";
+}
+
+function getModeRepartitionLabel(mode?: ModeRepartitionCharges) {
+  const labels: Record<ModeRepartitionCharges, string> = {
+    egalitaire: "Répartition égalitaire",
+    surface: "Répartition selon les surfaces",
+    cle_repartition: "Clé de répartition",
+    tantiemes: "Répartition par tantièmes",
+  };
+
+  return mode ? labels[mode] : "Défini dans le module Mes biens";
 }
 
 function findBien(biens: BienRegularisation[], bienId: string) {
@@ -862,16 +883,19 @@ function VueListeBiens({
 
 function FormDepense({
   bien,
+  lot,
   categories,
   onBack,
   onSave,
   onAddCustomSubcategory,
 }: {
   bien: BienRegularisation;
+  lot?: LotRegularisation;
   categories: CategorieCharge[];
   onBack: () => void;
   onSave: (payload: {
     bienId: string;
+    lotId?: string;
     categorieId: string;
     sousCategorieId: string;
     montantAnnuel: number;
@@ -925,6 +949,7 @@ function FormDepense({
 
     onSave({
       bienId: bien.id,
+      lotId: lot?.id,
       categorieId,
       sousCategorieId,
       montantAnnuel: Number(montantAnnuel),
@@ -938,13 +963,28 @@ function FormDepense({
     <PageShell>
       <PageHeader
         title="➕ Ajouter une dépense"
-        subtitle={`${bien.nom} · ${bien.reference}`}
+        subtitle={
+          lot
+            ? `${bien.nom} · ${lot.reference} · ${lot.nom}`
+            : `${bien.nom} · ${bien.reference}`
+        }
         onBack={onBack}
       />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <SectionCard>
           <SectionTitle emoji="💶" title="Informations de la dépense" />
+
+          <div className="grid sm:grid-cols-2 gap-3 mb-5">
+            <InfoRow
+              label="Niveau de rattachement"
+              value={lot ? "Lot d’un immeuble de rapport" : getBienTypeLabel(bien.typeBien)}
+            />
+            <InfoRow
+              label="Actif concerné"
+              value={lot ? `${lot.reference} · ${lot.nom}` : `${bien.reference} · ${bien.nom}`}
+            />
+          </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
@@ -1173,9 +1213,9 @@ function VueDetailBien({
   setActiveTab,
   onBack,
   onAddDepense,
+  onAddDepenseLot,
   onCalculateRegularisation,
   onValidateRegularisation,
-  onUpdateLots,
 }: {
   bien: BienRegularisation;
   lots: LotRegularisation[];
@@ -1186,11 +1226,10 @@ function VueDetailBien({
   setActiveTab: (tab: OngletDetail) => void;
   onBack: () => void;
   onAddDepense: () => void;
+  onAddDepenseLot: (lotId: string) => void;
   onCalculateRegularisation: () => void;
   onValidateRegularisation: (regularisationId: string) => void;
-  onUpdateLots: (lots: LotRegularisation[]) => void;
 }) {
-  const [lotsEdit, setLotsEdit] = useState<LotRegularisation[]>(lots);
 
   const tabs: { id: OngletDetail; label: string; emoji: string; visible: boolean }[] = [
     { id: "depenses", label: "Dépenses", emoji: "💶", visible: true },
@@ -1207,7 +1246,9 @@ function VueDetailBien({
         onBack={onBack}
         actions={
           <ActionButton onClick={onAddDepense} variant="orange">
-            + Ajouter une dépense
+            {bien.typeBien === "immeuble_rapport"
+              ? "+ Ajouter une dépense immeuble"
+              : "+ Ajouter une dépense"}
           </ActionButton>
         }
       />
@@ -1310,11 +1351,25 @@ function VueDetailBien({
                           >
                             {depense.syncStatus}
                           </StatusBadge>
+
+                          <StatusBadge tone={depense.lotId ? "purple" : "gray"}>
+                            {depense.lotId
+                              ? `Lot ${depense.lotReference || ""}`
+                              : depense.niveau === "immeuble_rapport"
+                                ? "Immeuble"
+                                : "Bien individuel"}
+                          </StatusBadge>
                         </div>
 
                         <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
                           {depense.date} · {depense.categorieLabel}
                         </p>
+
+                        {depense.lotId && (
+                          <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
+                            Rattachée au lot : {depense.lotReference} · {depense.lotNom}
+                          </p>
+                        )}
 
                         <p className="text-xs mt-1" style={{ color: "#cbd5e1" }}>
                           Origine :{" "}
@@ -1358,86 +1413,48 @@ function VueDetailBien({
 
         {activeTab === "lots" && bien.typeBien === "immeuble_rapport" && (
           <SectionCard>
-            <SectionTitle emoji="🏢" title="Lots et tantièmes" />
+            <SectionTitle emoji="🏢" title="Lots et répartition" />
+
+            <div
+              className="mb-5 p-4 rounded-3xl"
+              style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe" }}
+            >
+              <p className="text-sm font-bold" style={{ color: "#1d4ed8" }}>
+                Le mode de répartition des lots est repris du module Mes biens, au moment
+                de la création ou de la modification de l’immeuble de rapport. Il n’est
+                pas modifiable dans le module Régularisation des charges.
+              </p>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-3 mb-5">
+              <InfoRow
+                label="Mode de répartition hérité"
+                value={getModeRepartitionLabel(bien.modeRepartitionCharges)}
+              />
+              <InfoRow label="Base de tantièmes" value={bien.totalTantiemes || "—"} />
+              <InfoRow label="Nombre de lots" value={lots.length} />
+            </div>
 
             <div className="space-y-3">
-              {lotsEdit.map((lot, index) => (
+              {lots.map(lot => (
                 <div
                   key={lot.id}
                   className="p-4 rounded-3xl"
                   style={{ backgroundColor: "#f8fafc" }}
                 >
-                  <div className="grid sm:grid-cols-5 gap-3 items-end">
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 items-center">
                     <InfoRow label="Lot" value={`${lot.reference} · ${lot.nom}`} />
                     <InfoRow label="Locataire" value={lot.locataire || "—"} />
+                    <InfoRow label="Quote-part héritée" value={`${lot.quotePart}/${lot.baseTantiemes}`} />
+                    <StatusBadge tone="gray">Lecture seule</StatusBadge>
 
-                    <div>
-                      <label
-                        className="block text-xs font-black mb-2"
-                        style={{ color: "#64748b" }}
-                      >
-                        Quote-part
-                      </label>
-                      <input
-                        type="number"
-                        value={lot.quotePart}
-                        disabled={!lot.canEdit}
-                        onChange={event => {
-                          const next = [...lotsEdit];
-                          next[index] = {
-                            ...next[index],
-                            quotePart: Number(event.target.value),
-                          };
-                          setLotsEdit(next);
-                        }}
-                        className="w-full px-4 py-3 rounded-3xl border outline-none text-sm disabled:opacity-60"
-                        style={{ borderColor: "#e2e8f0" }}
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-xs font-black mb-2"
-                        style={{ color: "#64748b" }}
-                      >
-                        Base de tantièmes
-                      </label>
-                      <select
-                        value={lot.baseTantiemes}
-                        disabled={!lot.canEdit}
-                        onChange={event => {
-                          const base = Number(event.target.value);
-                          const next = lotsEdit.map(item => ({
-                            ...item,
-                            baseTantiemes: base,
-                          }));
-                          setLotsEdit(next);
-                        }}
-                        className="w-full px-4 py-3 rounded-3xl border outline-none text-sm disabled:opacity-60"
-                        style={{ borderColor: "#e2e8f0" }}
-                      >
-                        <option value={100}>100</option>
-                        <option value={1000}>1 000</option>
-                        <option value={10000}>10 000</option>
-                        <option value={100000}>100 000</option>
-                      </select>
-                    </div>
-
-                    <StatusBadge tone={lot.canEdit ? "green" : "gray"}>
-                      {lot.canEdit ? "Modifiable" : "Verrouillé"}
-                    </StatusBadge>
+                    <ActionButton onClick={() => onAddDepenseLot(lot.id)} variant="orange">
+                      + Dépense lot
+                    </ActionButton>
                   </div>
                 </div>
               ))}
             </div>
-
-            <button
-              onClick={() => onUpdateLots(lotsEdit)}
-              className="mt-5 w-full py-4 rounded-3xl text-white text-sm font-black shadow"
-              style={{ background: "linear-gradient(135deg,#f97316,#fb923c)" }}
-            >
-              Enregistrer les tantièmes
-            </button>
           </SectionCard>
         )}
 
@@ -1482,6 +1499,14 @@ function VueDetailBien({
                             }
                           >
                             {reg.statut}
+                          </StatusBadge>
+
+                          <StatusBadge tone={depense.lotId ? "purple" : "gray"}>
+                            {depense.lotId
+                              ? `Lot ${depense.lotReference || ""}`
+                              : depense.niveau === "immeuble_rapport"
+                                ? "Immeuble"
+                                : "Bien individuel"}
                           </StatusBadge>
                         </div>
 
@@ -1618,7 +1643,7 @@ export default function ModuleRegularisationCharges() {
   const [activeTab, setActiveTab] = useState<OngletDetail>("depenses");
 
   const [biens] = useState<BienRegularisation[]>(biensMock);
-  const [lots, setLots] = useState<LotRegularisation[]>(lotsMock);
+  const [lots] = useState<LotRegularisation[]>(lotsMock);
   const [categories, setCategories] = useState<CategorieCharge[]>(categoriesInitiales);
   const [depenses, setDepenses] = useState<DepenseRegularisation[]>(depensesMock);
   const [regularisations, setRegularisations] =
@@ -1636,6 +1661,14 @@ export default function ModuleRegularisationCharges() {
 
     return null;
   }, [view, biens]);
+
+  const selectedLot = useMemo(() => {
+    if ((view.name === "form_depense" || view.name === "form_sous_categorie") && view.lotId) {
+      return lots.find(lot => lot.id === view.lotId);
+    }
+
+    return null;
+  }, [view, lots]);
 
   const selectedCategorie = useMemo(() => {
     if (view.name !== "form_sous_categorie") return null;
@@ -1659,6 +1692,7 @@ export default function ModuleRegularisationCharges() {
 
   const handleSaveDepense = (payload: {
     bienId: string;
+    lotId?: string;
     categorieId: string;
     sousCategorieId: string;
     montantAnnuel: number;
@@ -1676,9 +1710,20 @@ export default function ModuleRegularisationCharges() {
       return;
     }
 
+    const bienParent = findBien(biens, payload.bienId);
+    const lotCible = payload.lotId ? lots.find(lot => lot.id === payload.lotId) : undefined;
+
     const depenseApiResponse: DepenseRegularisation = {
       id: `dep-${Date.now()}`,
       bienId: payload.bienId,
+      lotId: lotCible?.id,
+      lotReference: lotCible?.reference,
+      lotNom: lotCible?.nom,
+      niveau: lotCible
+        ? "lot_immeuble"
+        : bienParent?.typeBien === "immeuble_rapport"
+          ? "immeuble_rapport"
+          : "bien_individuel",
       date: payload.date,
       categorieId: categorie.id,
       categorieLabel: categorie.label,
@@ -1700,14 +1745,18 @@ export default function ModuleRegularisationCharges() {
     addHistory(
       payload.bienId,
       "Dépense créée et transmise à l’API",
-      `${sousCategorie.label} — ${formatEuros(payload.montantAnnuel)}`
+      lotCible
+        ? `${lotCible.reference} · ${lotCible.nom} — ${sousCategorie.label} — ${formatEuros(payload.montantAnnuel)}`
+        : `${sousCategorie.label} — ${formatEuros(payload.montantAnnuel)}`
     );
 
     setView({ name: "detail", bienId: payload.bienId });
     setActiveTab("depenses");
 
     alert(
-      "Dépense enregistrée. Le Back-End qualifiera la charge et synchronisera le Reporting."
+      lotCible
+        ? "Dépense enregistrée sur le lot. Les catégories et sous-catégories restent identiques, et le Back-End rattache la dépense au lot sélectionné."
+        : "Dépense enregistrée. Le Back-End qualifiera la charge et synchronisera le Reporting."
     );
   };
 
@@ -1744,7 +1793,11 @@ export default function ModuleRegularisationCharges() {
       `${payload.label}`
     );
 
-    setView({ name: "form_depense", bienId: selectedBien.id });
+    setView({
+      name: "form_depense",
+      bienId: selectedBien.id,
+      lotId: view.name === "form_sous_categorie" ? view.lotId : undefined,
+    });
 
     alert("Sous-catégorie créée. Elle est immédiatement disponible dans le formulaire.");
   };
@@ -1819,26 +1872,11 @@ export default function ModuleRegularisationCharges() {
     );
   };
 
-  const handleUpdateLots = (updatedLots: LotRegularisation[]) => {
-    setLots(updatedLots);
-
-    if (selectedBien) {
-      addHistory(
-        selectedBien.id,
-        "Modification des tantièmes transmise à l’API",
-        "Lots mis à jour"
-      );
-    }
-
-    alert(
-      "Modification transmise à l’API. Les contrôles de cohérence des tantièmes sont gérés par le Back-End."
-    );
-  };
-
   if (view.name === "form_depense" && selectedBien) {
     return (
       <FormDepense
         bien={selectedBien}
+        lot={selectedLot || undefined}
         categories={categories}
         onBack={() => setView({ name: "detail", bienId: selectedBien.id })}
         onSave={handleSaveDepense}
@@ -1846,6 +1884,7 @@ export default function ModuleRegularisationCharges() {
           setView({
             name: "form_sous_categorie",
             bienId: selectedBien.id,
+            lotId: view.name === "form_depense" ? view.lotId : undefined,
             categorieId,
           })
         }
@@ -1857,7 +1896,13 @@ export default function ModuleRegularisationCharges() {
     return (
       <FormSousCategoriePersonnalisee
         categorie={selectedCategorie}
-        onBack={() => setView({ name: "form_depense", bienId: selectedBien.id })}
+        onBack={() =>
+          setView({
+            name: "form_depense",
+            bienId: selectedBien.id,
+            lotId: view.name === "form_sous_categorie" ? view.lotId : undefined,
+          })
+        }
         onSave={handleSaveCustomSubcategory}
       />
     );
@@ -1882,9 +1927,11 @@ export default function ModuleRegularisationCharges() {
         setActiveTab={setActiveTab}
         onBack={() => setView({ name: "liste" })}
         onAddDepense={() => setView({ name: "form_depense", bienId: selectedBien.id })}
+        onAddDepenseLot={lotId =>
+          setView({ name: "form_depense", bienId: selectedBien.id, lotId })
+        }
         onCalculateRegularisation={() => handleCalculateRegularisation(selectedBien)}
         onValidateRegularisation={handleValidateRegularisation}
-        onUpdateLots={handleUpdateLots}
       />
     );
   }

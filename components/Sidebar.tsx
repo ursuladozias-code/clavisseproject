@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-import { Menu, X, LayoutDashboard, Building2, Users, FileText, Receipt, FileCheck, Shield, UserCircle, Settings, Zap, TrendingUp, FileSearch, Home, CreditCard, Key } from 'lucide-react'
+import { Menu, X, LayoutDashboard, Building2, Users, FileText, Receipt, FileCheck, Shield, UserCircle, Settings, Zap, TrendingUp, FileSearch, Home, CreditCard, Key, House, DoorClosed } from 'lucide-react'
 
 const mainLinks = [
   { href: '/dashboard',                  label: 'Dashboard',                  icon: LayoutDashboard },
@@ -24,6 +24,7 @@ const mainLinks = [
 
 const bottomLinks = [
   { href: '/profil',   label: 'Mon profil propriétaire', icon: UserCircle },
+  { href: '/connexion',   label: 'Mon compte', icon: DoorClosed },
 ]
 
 export default function Sidebar() {

@@ -1,6 +1,13 @@
 "use client";
 
+import { Inter } from "next/font/google";
 import { useMemo, useState, type ReactNode } from "react";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
+});
 
 // ============================================================
 // TYPES
@@ -363,10 +370,11 @@ function buildPhotoFromFilename(filename: string): PhotoEtatDesLieux | null {
 function PageShell({ children }: { children: ReactNode }) {
   return (
     <div
-      className="min-h-screen"
+      className={`${inter.className} min-h-screen`}
       style={{
         backgroundColor: "#f8fafc",
-        fontFamily: "'Inter', system-ui, sans-serif",
+        color: "#172033",
+        letterSpacing: "-0.015em",
       }}
     >
       {children}
@@ -386,16 +394,22 @@ function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div
-      className="px-4 sm:px-6 py-6"
-      style={{ background: "linear-gradient(135deg,#fff7ed,#fff)" }}
+    <header
+      className="px-4 sm:px-6 py-5"
+      style={{
+        background: "linear-gradient(135deg,#fff7ed,#fff)",
+      }}
     >
       <div className="max-w-6xl mx-auto">
         {onBack && (
           <button
             onClick={onBack}
-            className="text-xs font-extrabold mb-3 hover:underline"
-            style={{ color: "#f97316" }}
+            className="px-3.5 py-2 rounded-2xl text-xs font-extrabold mb-4 transition"
+            style={{
+              color: "#64748b",
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+            }}
           >
             ← Retour
           </button>
@@ -404,23 +418,23 @@ function PageHeader({
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1
-              className="text-3xl sm:text-4xl font-black tracking-tight"
-              style={{ color: "#1e293b" }}
+              className="text-2xl font-black"
+              style={{ color: "#172033" }}
             >
               {title}
             </h1>
             <p
-              className="text-sm sm:text-base mt-2 font-semibold"
-              style={{ color: "#94a3b8" }}
+              className="text-sm mt-1"
+              style={{ color: "#64748b" }}
             >
               {subtitle}
             </p>
           </div>
 
-          {actions && <div className="flex gap-3 flex-wrap">{actions}</div>}
+          {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
         </div>
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -436,22 +450,24 @@ function ActionButton({
   disabled?: boolean;
 }) {
   const styles = {
-    orange: { bg: "#fff7ed", color: "#f97316" },
-    blue: { bg: "#eff6ff", color: "#2563eb" },
-    purple: { bg: "#f3e8ff", color: "#8b5cf6" },
-    green: { bg: "#dcfce7", color: "#16a34a" },
-    gray: { bg: "#f1f5f9", color: "#64748b" },
-    red: { bg: "#fee2e2", color: "#dc2626" },
+    orange: { bg: "linear-gradient(135deg,#f97316,#fb923c)", color: "#ffffff", border: "#f97316" },
+    blue: { bg: "#eff6ff", color: "#2563eb", border: "#dbeafe" },
+    purple: { bg: "#f3e8ff", color: "#7c3aed", border: "#ede9fe" },
+    green: { bg: "#16a34a", color: "#ffffff", border: "#16a34a" },
+    gray: { bg: "#ffffff", color: "#64748b", border: "#e2e8f0" },
+    red: { bg: "#fee2e2", color: "#dc2626", border: "#fecaca" },
   };
 
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className="px-5 py-3 rounded-3xl text-sm sm:text-base font-black disabled:opacity-50 transition hover:scale-[1.01]"
+      className="px-5 py-2.5 rounded-2xl text-sm font-extrabold shadow-lg transition hover:opacity-90 disabled:opacity-40"
       style={{
-        backgroundColor: styles[variant].bg,
+        background: styles[variant].bg,
         color: styles[variant].color,
+        border: `1px solid ${styles[variant].border}`,
+        fontFamily: "inherit",
       }}
     >
       {children}
@@ -472,18 +488,27 @@ function StatCard({
 }) {
   return (
     <div
-      className="rounded-[2rem] p-6 text-white min-h-[118px]"
-      style={{ background: gradient }}
+      className="rounded-3xl p-4 text-white"
+      style={{
+        background: gradient,
+        
+      }}
     >
-      <div className="text-3xl mb-4">{emoji}</div>
-      <p className="text-3xl font-black leading-none">{value}</p>
-      <p className="text-sm font-black mt-2 opacity-95">{label}</p>
+      <div className="text-2xl mb-1">{emoji}</div>
+      <p className="text-2xl font-black">{value}</p>
+      <p className="text-xs font-bold opacity-90">{label}</p>
     </div>
   );
 }
 
 function SectionCard({ children }: { children: ReactNode }) {
-  return <div className="bg-white rounded-[2rem] p-5 sm:p-6 shadow-sm">{children}</div>;
+  return (
+    <section
+      className="bg-white rounded-3xl p-5 shadow-sm"
+    >
+      {children}
+    </section>
+  );
 }
 
 function SectionTitle({ emoji, title }: { emoji: string; title: string }) {
@@ -499,11 +524,11 @@ function SectionTitle({ emoji, title }: { emoji: string; title: string }) {
 
 function InfoRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="p-4 rounded-3xl" style={{ backgroundColor: "#f8fafc" }}>
-      <p className="text-xs font-black mb-1" style={{ color: "#94a3b8" }}>
+    <div className="p-3 rounded-2xl" style={{ backgroundColor: "#f8fafc" }}>
+      <p className="text-xs font-bold mb-0.5" style={{ color: "#94a3b8" }}>
         {label}
       </p>
-      <p className="text-sm font-black" style={{ color: "#1e293b" }}>
+      <p className="text-sm font-extrabold" style={{ color: "#1e293b" }}>
         {value || "—"}
       </p>
     </div>
@@ -528,7 +553,7 @@ function StatusBadge({
 
   return (
     <span
-      className="px-3 py-1 rounded-full text-xs font-black"
+      className="px-2 py-0.5 rounded-full text-xs font-bold"
       style={{ backgroundColor: styles[tone].bg, color: styles[tone].color }}
     >
       {children}
@@ -577,61 +602,74 @@ function VueListeDossiers({
 
   return (
     <PageShell>
-      <PageHeader
-        title="📝 États des lieux"
-        subtitle="Biens éligibles, états des lieux d’entrée, états des lieux de sortie, archives et transmission au dépôt de garantie."
-      />
+      <header
+        className="px-4 sm:px-6 py-5"
+        style={{ background: "linear-gradient(135deg,#fff7ed,#fff)" }}
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+            <div>
+              <h1 className="text-2xl font-black" style={{ color: "#172033" }}>
+                📝 États des lieux
+              </h1>
+              <p className="text-sm mt-1" style={{ color: "#64748b" }}>
+                Biens éligibles, états des lieux d’entrée, états des lieux de sortie, archives et transmission au dépôt de garantie.
+              </p>
+            </div>
+          </div>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <StatCard
-            emoji="🏠"
-            value={dossiers.length}
-            label="Biens éligibles"
-            gradient="linear-gradient(135deg,#f97316,#fb923c)"
-          />
-          <StatCard
-            emoji="🕐"
-            value={totalAucun}
-            label="À réaliser"
-            gradient="linear-gradient(135deg,#22c55e,#4ade80)"
-          />
-          <StatCard
-            emoji="📥"
-            value={totalEntree}
-            label="Entrées validées"
-            gradient="linear-gradient(135deg,#8b5cf6,#a78bfa)"
-          />
-          <StatCard
-            emoji="📤"
-            value={totalSortie}
-            label="Sorties validées"
-            gradient="linear-gradient(135deg,#3b82f6,#60a5fa)"
-          />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <StatCard
+              emoji="🏠"
+              value={dossiers.length}
+              label="Biens éligibles"
+              gradient="linear-gradient(135deg,#ff7518,#ff963b)"
+            />
+            <StatCard
+              emoji="🕐"
+              value={totalAucun}
+              label="À réaliser"
+              gradient="linear-gradient(135deg,#23c95a,#45d97a)"
+            />
+            <StatCard
+              emoji="📥"
+              value={totalEntree}
+              label="Entrées validées"
+              gradient="linear-gradient(135deg,#8a60ee,#a080f4)"
+            />
+            <StatCard
+              emoji="📤"
+              value={totalSortie}
+              label="Sorties validées"
+              gradient="linear-gradient(135deg,#4486ec,#5c9df1)"
+            />
+          </div>
         </div>
+      </header>
 
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <input
           value={recherche}
           onChange={event => setRecherche(event.target.value)}
           placeholder="Rechercher un bien, une adresse ou un locataire..."
-          className="w-full px-5 py-4 rounded-[1.5rem] text-sm sm:text-base border outline-none mb-8 bg-white"
+          className="w-full px-4 py-3 rounded-2xl text-sm border outline-none mb-5 bg-white"
           style={{
             borderColor: "#e2e8f0",
             color: "#1e293b",
           }}
         />
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {dossiersAffiches.map(dossier => (
             <button
               key={dossier.id}
               onClick={() => onOpen(dossier.id)}
-              className="w-full bg-white rounded-[2rem] p-5 shadow-sm hover:shadow-md transition text-left"
+              className="w-full bg-white rounded-3xl p-4 shadow-sm hover:shadow-md transition text-left"
             >
               <div className="flex items-center justify-between gap-5 flex-wrap">
                 <div className="flex items-center gap-4">
                   <div
-                    className="w-14 h-14 rounded-3xl flex items-center justify-center text-2xl"
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl"
                     style={{
                       background: "linear-gradient(135deg,#f97316,#fb923c)",
                     }}
@@ -661,7 +699,7 @@ function VueListeDossiers({
                 </div>
 
                 <div className="text-right">
-                  <p className="text-sm font-black" style={{ color: "#f97316" }}>
+                  <p className="text-sm font-extrabold" style={{ color: "#f97316" }}>
                     Consulter
                   </p>
                   <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
@@ -721,8 +759,8 @@ function VueDossier({
         }
       />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
             emoji="📄"
             value={dossier.bailReference}
@@ -799,12 +837,12 @@ function VueDossier({
               {historique.map(item => (
                 <div
                   key={item.id}
-                  className="p-4 rounded-3xl"
+                  className="p-3 rounded-2xl"
                   style={{ backgroundColor: "#f8fafc" }}
                 >
                   <div className="flex justify-between gap-4 flex-wrap">
                     <div>
-                      <p className="text-sm font-black" style={{ color: "#1e293b" }}>
+                      <p className="text-sm font-extrabold" style={{ color: "#1e293b" }}>
                         {item.action}
                       </p>
                       <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
@@ -863,12 +901,12 @@ function ArchiveEDL({
           return (
             <div
               key={piece.id}
-              className="p-4 rounded-3xl"
+              className="p-3 rounded-2xl"
               style={{ backgroundColor: "#f8fafc" }}
             >
               <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
                 <div>
-                  <p className="text-sm font-black" style={{ color: "#1e293b" }}>
+                  <p className="text-sm font-extrabold" style={{ color: "#1e293b" }}>
                     {piece.nom}
                   </p>
                   <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
@@ -1051,7 +1089,7 @@ function FormEtatDesLieux({
         }
       />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         <SectionCard>
           <SectionTitle emoji="📌" title="Dossier" />
 
@@ -1104,7 +1142,7 @@ function FormEtatDesLieux({
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {pieces.map((piece, index) => {
               const pieceEntree = dossier.etatDesLieuxEntree?.pieces.find(
                 p => p.nom === piece.nom
@@ -1113,11 +1151,11 @@ function FormEtatDesLieux({
               return (
                 <div
                   key={piece.id}
-                  className="p-4 rounded-3xl"
+                  className="p-3 rounded-2xl"
                   style={{ backgroundColor: "#f8fafc" }}
                 >
                   <div className="flex justify-between gap-3 flex-wrap mb-4">
-                    <p className="text-sm font-black" style={{ color: "#1e293b" }}>
+                    <p className="text-sm font-extrabold" style={{ color: "#1e293b" }}>
                       Pièce {index + 1}
                     </p>
 
@@ -1305,7 +1343,7 @@ function FormEtatDesLieux({
                         : "2px solid transparent",
                   }}
                 >
-                  <p className="text-sm font-black" style={{ color: "#1e293b" }}>
+                  <p className="text-sm font-extrabold" style={{ color: "#1e293b" }}>
                     {option.label}
                   </p>
                   <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>

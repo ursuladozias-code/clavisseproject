@@ -1,6 +1,13 @@
 "use client";
 
+import { Inter } from "next/font/google";
 import { useMemo, useState, type ReactNode } from "react";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
+});
 
 // ============================================================
 // TYPES
@@ -602,10 +609,11 @@ function getOrigineDepenseLabel(origine: OrigineDepense) {
 function PageShell({ children }: { children: ReactNode }) {
   return (
     <div
-      className="min-h-screen"
+      className={`${inter.className} min-h-screen`}
       style={{
         backgroundColor: "#f8fafc",
-        fontFamily: "'Inter', system-ui, sans-serif",
+        color: "#172033",
+        letterSpacing: "-0.015em",
       }}
     >
       {children}
@@ -625,16 +633,24 @@ function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div
-      className="px-4 sm:px-6 py-6"
-      style={{ background: "linear-gradient(135deg,#fff7ed,#fff)" }}
+    <header
+      className="px-4 sm:px-6 pt-6 pb-7"
+      style={{
+        background: "linear-gradient(135deg,#fffaf3 0%,#ffffff 72%)",
+        borderBottom: "1px solid #edf1f5",
+      }}
     >
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-[1440px] mx-auto">
         {onBack && (
           <button
             onClick={onBack}
-            className="text-xs font-extrabold mb-3 hover:underline"
-            style={{ color: "#f97316" }}
+            className="px-3.5 py-2 rounded-2xl text-xs font-extrabold mb-4 transition"
+            style={{
+              color: "#64748b",
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              fontFamily: "inherit",
+            }}
           >
             ← Retour
           </button>
@@ -642,24 +658,17 @@ function PageHeader({
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1
-              className="text-3xl sm:text-4xl font-black tracking-tight"
-              style={{ color: "#1e293b" }}
-            >
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: "#172033" }}>
               {title}
             </h1>
-            <p
-              className="text-sm sm:text-base mt-2 font-semibold"
-              style={{ color: "#94a3b8" }}
-            >
+            <p className="text-sm mt-2 font-semibold max-w-3xl" style={{ color: "#64748b" }}>
               {subtitle}
             </p>
           </div>
-
-          {actions && <div className="flex gap-3 flex-wrap">{actions}</div>}
+          {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
         </div>
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -675,22 +684,24 @@ function ActionButton({
   disabled?: boolean;
 }) {
   const styles = {
-    orange: { bg: "#fff7ed", color: "#f97316" },
-    blue: { bg: "#eff6ff", color: "#2563eb" },
-    purple: { bg: "#f3e8ff", color: "#8b5cf6" },
-    green: { bg: "#dcfce7", color: "#16a34a" },
-    gray: { bg: "#f1f5f9", color: "#64748b" },
-    red: { bg: "#fee2e2", color: "#dc2626" },
+    orange: { bg: "#f97316", color: "#ffffff", border: "#f97316" },
+    blue: { bg: "#eff6ff", color: "#2563eb", border: "#dbeafe" },
+    purple: { bg: "#f3e8ff", color: "#7c3aed", border: "#ede9fe" },
+    green: { bg: "#16a34a", color: "#ffffff", border: "#16a34a" },
+    gray: { bg: "#ffffff", color: "#64748b", border: "#e2e8f0" },
+    red: { bg: "#fee2e2", color: "#dc2626", border: "#fecaca" },
   };
 
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className="px-5 py-3 rounded-3xl text-sm sm:text-base font-black disabled:opacity-50 transition hover:scale-[1.01]"
+      className="px-4 py-2.5 rounded-2xl text-sm font-extrabold disabled:opacity-40 transition"
       style={{
         backgroundColor: styles[variant].bg,
         color: styles[variant].color,
+        border: `1px solid ${styles[variant].border}`,
+        fontFamily: "inherit",
       }}
     >
       {children}
@@ -711,26 +722,36 @@ function StatCard({
 }) {
   return (
     <div
-      className="rounded-[2rem] p-6 text-white min-h-[118px]"
-      style={{ background: gradient }}
+      className="rounded-[2rem] p-5 sm:p-6 text-white min-h-[146px]"
+      style={{
+        background: gradient,
+        boxShadow: "0 12px 28px rgba(15, 23, 42, 0.08)",
+      }}
     >
       <div className="text-3xl mb-4">{emoji}</div>
-      <p className="text-2xl sm:text-3xl font-black leading-none">{value}</p>
-      <p className="text-sm font-black mt-2 opacity-95">{label}</p>
+      <p className="text-3xl sm:text-4xl font-black leading-none">{value}</p>
+      <p className="text-sm font-extrabold mt-2 opacity-95">{label}</p>
     </div>
   );
 }
 
 function SectionCard({ children }: { children: ReactNode }) {
-  return <div className="bg-white rounded-[2rem] p-5 sm:p-6 shadow-sm">{children}</div>;
+  return (
+    <section
+      className="bg-white rounded-3xl p-4 sm:p-6"
+      style={{
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 12px 28px rgba(127, 73, 0, 0.06)",
+      }}
+    >
+      {children}
+    </section>
+  );
 }
 
 function SectionTitle({ emoji, title }: { emoji: string; title: string }) {
   return (
-    <p
-      className="text-xs font-black uppercase tracking-wide mb-4"
-      style={{ color: "#94a3b8" }}
-    >
+    <p className="text-xs font-black uppercase tracking-wide mb-4" style={{ color: "#94a3b8" }}>
       {emoji} {title}
     </p>
   );
@@ -739,12 +760,8 @@ function SectionTitle({ emoji, title }: { emoji: string; title: string }) {
 function InfoRow({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="p-4 rounded-3xl" style={{ backgroundColor: "#f8fafc" }}>
-      <p className="text-xs font-black mb-1" style={{ color: "#94a3b8" }}>
-        {label}
-      </p>
-      <p className="text-sm font-black" style={{ color: "#1e293b" }}>
-        {value || "—"}
-      </p>
+      <p className="text-xs font-black mb-1" style={{ color: "#94a3b8" }}>{label}</p>
+      <p className="text-sm font-black" style={{ color: "#1e293b" }}>{value || "—"}</p>
     </div>
   );
 }
@@ -766,10 +783,7 @@ function StatusBadge({
   };
 
   return (
-    <span
-      className="px-3 py-1 rounded-full text-xs font-black"
-      style={{ backgroundColor: styles[tone].bg, color: styles[tone].color }}
-    >
+    <span className="px-3 py-1 rounded-full text-xs font-black" style={{ backgroundColor: styles[tone].bg, color: styles[tone].color }}>
       {children}
     </span>
   );
@@ -810,7 +824,7 @@ function VueListeBiensReporting({
         subtitle="Revenus théoriques, revenus encaissés, dépenses, historique financier et exports."
       />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-7">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           <StatCard
             emoji="🏠"
@@ -845,7 +859,7 @@ function VueListeBiensReporting({
           value={recherche}
           onChange={event => setRecherche(event.target.value)}
           placeholder="Rechercher un bien ou un immeuble..."
-          className="w-full px-5 py-4 rounded-[1.5rem] text-sm sm:text-base border outline-none mb-8 bg-white"
+          className="w-full px-5 py-5 rounded-[1.5rem] text-sm sm:text-base border outline-none mb-7 bg-white"
           style={{
             borderColor: "#e2e8f0",
             color: "#1e293b",
@@ -860,12 +874,12 @@ function VueListeBiensReporting({
               <button
                 key={bien.id}
                 onClick={() => onOpen(bien.id)}
-                className="w-full bg-white rounded-[2rem] p-5 shadow-sm hover:shadow-md transition text-left"
+                className="w-full bg-white rounded-[2rem] p-5 sm:p-6 text-left transition" style={{ border: "1px solid #e2e8f0", boxShadow: "0 8px 18px rgba(15, 23, 42, 0.035)" }}
               >
                 <div className="flex items-center justify-between gap-5 flex-wrap">
                   <div className="flex items-center gap-4">
                     <div
-                      className="w-14 h-14 rounded-3xl flex items-center justify-center text-2xl"
+                      className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-2xl"
                       style={{
                         background:
                           bien.typeBien === "immeuble_rapport"
@@ -1279,7 +1293,7 @@ function VueDetailReporting({
         }
       />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-7">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           <StatCard
             emoji="📄"

@@ -1,9 +1,16 @@
 "use client";
 
+import { Inter } from "next/font/google";
 import { useMemo, useState } from "react";
 
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
+});
+
 // ============================================================
-// TYPES
+// TYPES & INTERFACES
 // ============================================================
 type TypeProprietaire = "personne_physique" | "personne_morale";
 type StatutProprietaire = "actif" | "archive";
@@ -97,7 +104,7 @@ interface ProprietairePersonneMorale extends BaseProprietaire {
     | "Autre";
   siren: string;
   siret: string;
-  numeroRCS?: string;
+  villeImmatriculation?: string;
   capitalSocial?: number;
   dateCreation?: string;
   representantLegal: {
@@ -133,7 +140,6 @@ const mockAbonnement = {
 
 // ============================================================
 // MOCK BIENS ASSOCIÉS
-// Normalement, ces données viendront du module Bien.
 // ============================================================
 const mockBiensAssocies: BienAssocie[] = [
   {
@@ -175,31 +181,30 @@ const mockProprietaires: Proprietaire[] = [
     typeProprietaire: "personne_physique",
     statut: "actif",
     civilite: "Monsieur",
-    nom: "Dubois",
-    prenom: "Michel",
-    dateNaissance: "1975-04-12",
+    nom: "Dupont",
+    prenom: "Jean",
+    dateNaissance: "1975-06-15",
     nationalite: "Française",
+    numeroFiscal: "1 75 06 75 123 456 78",
+    residentFiscalFrancais: true,
     adresse: {
-      numeroVoie: "22",
+      numeroVoie: "12",
       typeVoie: "Rue",
-      nomVoie: "de la République",
+      nomVoie: "Victor Hugo",
       complementAdresse: "",
-      codePostal: "69002",
+      codePostal: "69001",
       ville: "Lyon",
       departement: "Rhône",
       region: "Auvergne-Rhône-Alpes",
       pays: "France",
     },
-    telephonePrincipal: "0600000000",
+    telephonePrincipal: "0612345678",
     telephoneSecondaire: "",
-    email: "michel.dubois@email.com",
-    numeroFiscal: "1234567890123",
-    residentFiscalFrancais: true,
-    paysResidenceFiscale: "",
+    email: "jean.dupont@email.com",
     documents: [
       {
         id: "doc001",
-        nom: "Pièce d’identité",
+        nom: "Pièce d'identité",
         obligatoire: true,
         dateAjout: "2026-01-10",
       },
@@ -217,7 +222,7 @@ const mockProprietaires: Proprietaire[] = [
     formeJuridique: "SCI",
     siren: "123456789",
     siret: "12345678900012",
-    numeroRCS: "Lyon B 123 456 789",
+    villeImmatriculation: "Lyon",
     capitalSocial: 1000,
     dateCreation: "2020-09-01",
     adresse: {
@@ -278,7 +283,6 @@ function getNomAffichage(proprietaire: Proprietaire) {
   if (proprietaire.typeProprietaire === "personne_physique") {
     return `${proprietaire.prenom} ${proprietaire.nom}`;
   }
-
   return proprietaire.raisonSociale;
 }
 
@@ -287,9 +291,7 @@ function getAdresseComplete(adresse: Adresse) {
 }
 
 function getTypeProprietaireLabel(type: TypeProprietaire) {
-  return type === "personne_physique"
-    ? "Personne physique"
-    : "Personne morale";
+  return type === "personne_physique" ? "Personne physique" : "Personne morale";
 }
 
 function getTypeActifLabel(type: TypeActifAssocie) {
@@ -298,565 +300,640 @@ function getTypeActifLabel(type: TypeActifAssocie) {
     immeuble_rapport: "Immeuble de rapport",
     lot_immeuble: "Lot locatif",
   };
-
   return labels[type];
 }
-
 // ============================================================
-// UI PARTAGÉE
+// COMPOSANTS UI PARTAGÉS
 // ============================================================
 function SectionCard({ children }: { children: React.ReactNode }) {
-  return <div className="bg-white rounded-3xl p-5 shadow-sm">{children}</div>;
-}
-
-function SectionTitle({ emoji, title }: { emoji: string; title: string }) {
-  return (
-    <p
-      className="text-xs font-extrabold uppercase tracking-wide mb-3"
-      style={{ color: "#94a3b8" }}
-    >
-      {emoji} {title}
-    </p>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="p-3 rounded-2xl" style={{ backgroundColor: "#f8fafc" }}>
-      <p className="text-xs font-bold mb-0.5" style={{ color: "#94a3b8" }}>
-        {label}
-      </p>
-      <p className="text-sm font-extrabold" style={{ color: "#1e293b" }}>
-        {value || "—"}
-      </p>
-    </div>
-  );
-}
-
-function FormInput({
-  label,
-  value,
-  onChange,
-  type = "text",
-  required = false,
-  readOnly = false,
-  placeholder = "",
-}: {
-  label: string;
-  value: string | number;
-  onChange?: (value: string) => void;
-  type?: string;
-  required?: boolean;
-  readOnly?: boolean;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-xs font-bold mb-1" style={{ color: "#64748b" }}>
-        {label}
-        {required && <span style={{ color: "#f97316" }}> *</span>}
-      </label>
-
-      <input
-        type={type}
-        value={value}
-        onChange={event => onChange?.(event.target.value)}
-        readOnly={readOnly}
-        placeholder={placeholder}
-        className="w-full px-4 py-2.5 rounded-2xl text-sm border outline-none"
-        style={{
-          borderColor: "#e2e8f0",
-          backgroundColor: readOnly ? "#f8fafc" : "#fff",
-          color: readOnly ? "#94a3b8" : "#1e293b",
-        }}
-      />
-    </div>
-  );
-}
-
-function FormSelect({
-  label,
-  value,
-  onChange,
-  options,
-  required = false,
-  disabled = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  required?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-xs font-bold mb-1" style={{ color: "#64748b" }}>
-        {label}
-        {required && <span style={{ color: "#f97316" }}> *</span>}
-      </label>
-
-      <select
-        value={value}
-        onChange={event => onChange(event.target.value)}
-        disabled={disabled}
-        className="w-full px-4 py-2.5 rounded-2xl text-sm border outline-none"
-        style={{
-          borderColor: "#e2e8f0",
-          backgroundColor: disabled ? "#f8fafc" : "#fff",
-          color: disabled ? "#94a3b8" : "#1e293b",
-        }}
+    return <div className="bg-white rounded-3xl p-5 shadow-sm">{children}</div>;
+  }
+  
+  function SectionTitle({ emoji, title }: { emoji: string; title: string }) {
+    return (
+      <p
+        className="text-xs font-extrabold uppercase tracking-wide mb-3"
+        style={{ color: "#94a3b8" }}
       >
-        <option value="">— Sélectionner —</option>
-        {options.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function StatutBadge({ statut }: { statut: StatutProprietaire }) {
-  const cfg: Record<StatutProprietaire, { label: string; bg: string; color: string }> =
-    {
-      actif: {
-        label: "Actif",
-        bg: "#dcfce7",
-        color: "#166534",
-      },
-      archive: {
-        label: "Archivé",
-        bg: "#f1f5f9",
-        color: "#64748b",
-      },
+        {emoji} {title}
+      </p>
+    );
+  }
+  
+  function InfoRow({ label, value }: { label: string; value: string | number }) {
+    return (
+      <div className="p-3 rounded-2xl" style={{ backgroundColor: "#f8fafc" }}>
+        <p className="text-xs font-bold mb-0.5" style={{ color: "#94a3b8" }}>
+          {label}
+        </p>
+        <p className="text-sm font-extrabold" style={{ color: "#1e293b" }}>
+          {value || "—"}
+        </p>
+      </div>
+    );
+  }
+  
+  function FormInput({
+    label,
+    value,
+    onChange,
+    type = "text",
+    required = false,
+    readOnly = false,
+    placeholder = "",
+    disabled = false,
+  }: {
+    label: string;
+    value: string | number;
+    onChange?: (value: string) => void;
+    type?: string;
+    required?: boolean;
+    readOnly?: boolean;
+    placeholder?: string;
+    disabled?: boolean;
+  }) {
+    return (
+      <div>
+        <label
+          className="block text-xs font-bold mb-1"
+          style={{ color: "#64748b" }}
+        >
+          {label}
+          {required && <span style={{ color: "#f97316" }}> *</span>}
+        </label>
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          readOnly={readOnly}
+          disabled={disabled}
+          placeholder={placeholder}
+          className="w-full px-4 py-2.5 rounded-2xl text-sm border outline-none transition"
+          style={{
+            borderColor: "#e2e8f0",
+            backgroundColor: readOnly || disabled ? "#f8fafc" : "#fff",
+            color: readOnly || disabled ? "#94a3b8" : "#1e293b",
+          }}
+        />
+      </div>
+    );
+  }
+  
+  function FormSelect({
+    label,
+    value,
+    onChange,
+    options,
+    required = false,
+    disabled = false,
+  }: {
+    label: string;
+    value: string;
+    onChange?: (value: string) => void;
+    options: { value: string; label: string }[];
+    required?: boolean;
+    disabled?: boolean;
+  }) {
+    return (
+      <div>
+        <label
+          className="block text-xs font-bold mb-1"
+          style={{ color: "#64748b" }}
+        >
+          {label}
+          {required && <span style={{ color: "#f97316" }}> *</span>}
+        </label>
+        <select
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          disabled={disabled}
+          className="w-full px-4 py-2.5 rounded-2xl text-sm border outline-none transition"
+          style={{
+            borderColor: "#e2e8f0",
+            backgroundColor: disabled ? "#f8fafc" : "#fff",
+            color: disabled ? "#94a3b8" : "#1e293b",
+          }}
+        >
+          <option value="">— Sélectionner —</option>
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+  
+  function StatutBadge({ statut }: { statut: StatutProprietaire }) {
+    const cfg: Record<
+      StatutProprietaire,
+      { label: string; bg: string; color: string }
+    > = {
+      actif: { label: "Actif", bg: "#dcfce7", color: "#166534" },
+      archive: { label: "Archivé", bg: "#f1f5f9", color: "#64748b" },
     };
-
-  const c = cfg[statut];
-
-  return (
-    <span
-      className="px-2 py-0.5 rounded-full text-xs font-bold"
-      style={{ backgroundColor: c.bg, color: c.color }}
-    >
-      {c.label}
-    </span>
-  );
-}
-
-function StatutActifBadge({ statut }: { statut: StatutActifAssocie }) {
-  const cfg: Record<StatutActifAssocie, { label: string; bg: string; color: string }> =
-    {
-      vacant: {
-        label: "Vacant",
-        bg: "#fef9c3",
-        color: "#854d0e",
-      },
-      occupe: {
-        label: "Occupé",
-        bg: "#dcfce7",
-        color: "#166534",
-      },
-      archive: {
-        label: "Archivé",
-        bg: "#f1f5f9",
-        color: "#64748b",
-      },
+    const c = cfg[statut];
+    return (
+      <span
+        className="px-2 py-0.5 rounded-full text-xs font-bold"
+        style={{ backgroundColor: c.bg, color: c.color }}
+      >
+        {c.label}
+      </span>
+    );
+  }
+  
+  function StatutActifBadge({ statut }: { statut: StatutActifAssocie }) {
+    const cfg: Record<
+      StatutActifAssocie,
+      { label: string; bg: string; color: string }
+    > = {
+      occupe: { label: "Occupé", bg: "#dcfce7", color: "#166534" },
+      vacant: { label: "Vacant", bg: "#fef3c7", color: "#92400e" },
+      archive: { label: "Archivé", bg: "#f1f5f9", color: "#64748b" },
     };
-
-  const c = cfg[statut];
-
-  return (
-    <span
-      className="px-2 py-0.5 rounded-full text-xs font-bold"
-      style={{ backgroundColor: c.bg, color: c.color }}
-    >
-      {c.label}
-    </span>
-  );
-}
-
-// ============================================================
-// ADRESSE FORM
-// ============================================================
-function AdresseForm({
-  adresse,
-  setAdresse,
-  locked = false,
-}: {
-  adresse: Adresse;
-  setAdresse: (adresse: Adresse) => void;
-  locked?: boolean;
-}) {
-  const update = (field: keyof Adresse, value: string) => {
-    setAdresse({
-      ...adresse,
-      [field]: value,
-    });
-  };
-
-  return (
-    <div className="grid sm:grid-cols-2 gap-4">
-      <FormInput
-        label="Numéro de voie"
-        value={adresse.numeroVoie}
-        onChange={value => update("numeroVoie", value)}
-        readOnly={locked}
-        required
-      />
-
-      <FormSelect
-        label="Type de voie"
-        value={adresse.typeVoie}
-        onChange={value => update("typeVoie", value)}
-        disabled={locked}
-        required
-        options={[
-          "Rue",
-          "Avenue",
-          "Boulevard",
-          "Allée",
-          "Impasse",
-          "Chemin",
-          "Route",
-          "Place",
-          "Quai",
-          "Résidence",
-          "Autre",
-        ].map(value => ({ value, label: value }))}
-      />
-
-      <div className="sm:col-span-2">
+    const c = cfg[statut];
+    return (
+      <span
+        className="px-2 py-0.5 rounded-full text-xs font-bold"
+        style={{ backgroundColor: c.bg, color: c.color }}
+      >
+        {c.label}
+      </span>
+    );
+  }
+  
+  // ============================================================
+  // COMPOSANT ADRESSE (partagé entre wizards)
+  // ============================================================
+  function AdresseForm({
+    adresse,
+    onChange,
+    locked = false,
+  }: {
+    adresse: Adresse;
+    onChange: (adresse: Adresse) => void;
+    locked?: boolean;
+  }) {
+    const update = (field: keyof Adresse, value: string) => {
+      onChange({ ...adresse, [field]: value });
+    };
+  
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormInput
-          label="Nom de la voie"
-          value={adresse.nomVoie}
-          onChange={value => update("nomVoie", value)}
+          label="Numéro de voie"
+          value={adresse.numeroVoie}
+          onChange={(v) => update("numeroVoie", v)}
+          readOnly={locked}
+          required
+        />
+        <FormSelect
+          label="Type de voie"
+          value={adresse.typeVoie}
+          onChange={(v) => update("typeVoie", v)}
+          disabled={locked}
+          required
+          options={[
+            "Rue","Avenue","Boulevard","Allée",
+            "Impasse","Chemin","Route","Place",
+            "Quai","Résidence","Autre",
+          ].map((v) => ({ value: v, label: v }))}
+        />
+        <div className="col-span-1 sm:col-span-2">
+          <FormInput
+            label="Nom de la voie"
+            value={adresse.nomVoie}
+            onChange={(v) => update("nomVoie", v)}
+            readOnly={locked}
+            required
+          />
+        </div>
+        <div className="col-span-1 sm:col-span-2">
+          <FormInput
+            label="Complément d'adresse"
+            value={adresse.complementAdresse || ""}
+            onChange={(v) => update("complementAdresse", v)}
+            readOnly={locked}
+          />
+        </div>
+        <FormInput
+          label="Code postal"
+          value={adresse.codePostal}
+          onChange={(v) => update("codePostal", v)}
+          readOnly={locked}
+          required
+        />
+        <FormInput
+          label="Ville"
+          value={adresse.ville}
+          onChange={(v) => update("ville", v)}
+          readOnly={locked}
+          required
+        />
+        <FormInput
+          label="Département"
+          value={adresse.departement}
+          onChange={(v) => update("departement", v)}
+          readOnly={locked}
+        />
+        <FormInput
+          label="Région"
+          value={adresse.region}
+          onChange={(v) => update("region", v)}
+          readOnly={locked}
+        />
+        <FormInput
+          label="Pays"
+          value={adresse.pays}
+          onChange={(v) => update("pays", v)}
           readOnly={locked}
           required
         />
       </div>
-
-      <div className="sm:col-span-2">
-        <FormInput
-          label="Complément d’adresse"
-          value={adresse.complementAdresse || ""}
-          onChange={value => update("complementAdresse", value)}
-          readOnly={locked}
-        />
-      </div>
-
-      <FormInput
-        label="Code postal"
-        value={adresse.codePostal}
-        onChange={value => update("codePostal", value)}
-        readOnly={locked}
-        required
-      />
-
-      <FormInput
-        label="Ville"
-        value={adresse.ville}
-        onChange={value => update("ville", value)}
-        readOnly={locked}
-        required
-      />
-
-      <FormInput
-        label="Département"
-        value={adresse.departement}
-        onChange={value => update("departement", value)}
-        readOnly={locked}
-      />
-
-      <FormInput
-        label="Région"
-        value={adresse.region}
-        onChange={value => update("region", value)}
-        readOnly={locked}
-      />
-
-      <FormSelect
-        label="Pays"
-        value={adresse.pays}
-        onChange={value => update("pays", value)}
-        disabled={locked}
-        required
-        options={["France", "Belgique", "Suisse", "Luxembourg"].map(value => ({
-          value,
-          label: value,
-        }))}
-      />
-    </div>
-  );
-}
-
-// ============================================================
-// CHOIX TYPE PROPRIÉTAIRE
-// ============================================================
-function ChoixTypeProprietaire({
-  onChoix,
-  onRetour,
-}: {
-  onChoix: (type: TypeProprietaire) => void;
-  onRetour: () => void;
-}) {
-  return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{
-        backgroundColor: "#f8fafc",
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      <div className="w-full max-w-lg">
-        <button
-          onClick={onRetour}
-          className="text-xs font-bold mb-6 hover:underline"
-          style={{ color: "#f97316" }}
-        >
-          ← Retour
-        </button>
-
-        <h1 className="text-2xl font-black mb-2" style={{ color: "#1e293b" }}>
-          Quel type de propriétaire souhaitez-vous créer ?
-        </h1>
-
-        <p className="text-sm mb-8" style={{ color: "#94a3b8" }}>
-          Le choix du type de propriétaire détermine le formulaire affiché.
-        </p>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <button
-            onClick={() => onChoix("personne_physique")}
-            className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-lg transition text-left border-2 hover:border-orange-300"
-            style={{ borderColor: "#e2e8f0" }}
-          >
-            <div
-              className="w-14 h-14 rounded-3xl flex items-center justify-center text-3xl mb-4"
-              style={{ background: "linear-gradient(135deg,#f97316,#fb923c)" }}
-            >
-              👤
+    );
+  }
+  
+  // ============================================================
+  // WIZARD STEP INDICATOR
+  // ============================================================
+  function WizardStepIndicator({
+    steps,
+    currentStep,
+  }: {
+    steps: { label: string; emoji: string }[];
+    currentStep: number;
+  }) {
+    return (
+      <div className="w-full overflow-x-auto pb-2">
+        <div className="flex items-center justify-center min-w-max mx-auto px-2">
+          {steps.map((step, index) => (
+            <div key={index} className="flex items-center">
+              <div className="flex flex-col items-center gap-1">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold transition-all"
+                  style={{
+                    backgroundColor:
+                      index < currentStep
+                        ? "#22c55e"
+                        : index === currentStep
+                        ? "#f97316"
+                        : "#e2e8f0",
+                    color:
+                      index <= currentStep ? "#fff" : "#94a3b8",
+                  }}
+                >
+                  {index < currentStep ? "✓" : step.emoji}
+                </div>
+                <span
+                  className="text-xs font-bold whitespace-nowrap hidden sm:block"
+                  style={{
+                    color:
+                      index === currentStep
+                        ? "#f97316"
+                        : index < currentStep
+                        ? "#22c55e"
+                        : "#94a3b8",
+                  }}
+                >
+                  {step.label}
+                </span>
+              </div>
+              {index < steps.length - 1 && (
+                <div
+                  className="w-8 sm:w-12 h-0.5 mx-1 sm:mx-2 mb-4 sm:mb-5 transition-all"
+                  style={{
+                    backgroundColor:
+                      index < currentStep ? "#22c55e" : "#e2e8f0",
+                  }}
+                />
+              )}
             </div>
-
-            <p className="font-extrabold text-base mb-1" style={{ color: "#1e293b" }}>
-              Personne physique
-            </p>
-
-            <p className="text-xs" style={{ color: "#94a3b8" }}>
-              Propriétaire individuel : civilité, nom, prénom, fiscalité et
-              documents personnels.
-            </p>
-          </button>
-
-          <button
-            onClick={() => onChoix("personne_morale")}
-            className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-lg transition text-left border-2 hover:border-purple-300"
-            style={{ borderColor: "#e2e8f0" }}
-          >
-            <div
-              className="w-14 h-14 rounded-3xl flex items-center justify-center text-3xl mb-4"
-              style={{ background: "linear-gradient(135deg,#8b5cf6,#a78bfa)" }}
-            >
-              🏢
-            </div>
-
-            <p className="font-extrabold text-base mb-1" style={{ color: "#1e293b" }}>
-              Personne morale
-            </p>
-
-            <p className="text-xs" style={{ color: "#94a3b8" }}>
-              Société ou structure juridique : SCI, SARL, SAS, association ou
-              autre forme morale.
-            </p>
-          </button>
+          ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ============================================================
-// FORMULAIRE PERSONNE PHYSIQUE
-// ============================================================
-function FormProprietairePhysique({
-  reference,
-  initial,
-  hasAssociatedAssets = false,
-  onSave,
-  onCancel,
-}: {
-  reference: string;
-  initial?: ProprietairePersonnePhysique;
-  hasAssociatedAssets?: boolean;
-  onSave: (proprietaire: ProprietairePersonnePhysique) => void;
-  onCancel: () => void;
-}) {
-  const isEdit = !!initial;
-  const identiteLocked = isEdit && hasAssociatedAssets;
-
-  const [civilite, setCivilite] = useState<Civilite>(initial?.civilite || "Madame");
-  const [nom, setNom] = useState(initial?.nom || "");
-  const [prenom, setPrenom] = useState(initial?.prenom || "");
-  const [dateNaissance, setDateNaissance] = useState(initial?.dateNaissance || "");
-  const [nationalite, setNationalite] = useState(initial?.nationalite || "");
-
-  const [adresse, setAdresse] = useState<Adresse>(
-    initial?.adresse || {
-      numeroVoie: "",
-      typeVoie: "Rue",
-      nomVoie: "",
-      complementAdresse: "",
-      codePostal: "",
-      ville: "",
-      departement: "",
-      region: "",
-      pays: "France",
-    }
-  );
-
-  const [telephonePrincipal, setTelephonePrincipal] = useState(
-    initial?.telephonePrincipal || ""
-  );
-  const [telephoneSecondaire, setTelephoneSecondaire] = useState(
-    initial?.telephoneSecondaire || ""
-  );
-  const [email, setEmail] = useState(initial?.email || "");
-
-  const [numeroFiscal, setNumeroFiscal] = useState(initial?.numeroFiscal || "");
-  const [residentFiscalFrancais, setResidentFiscalFrancais] = useState(
-    initial?.residentFiscalFrancais ?? true
-  );
-  const [paysResidenceFiscale, setPaysResidenceFiscale] = useState(
-    initial?.paysResidenceFiscale || ""
-  );
-
-  const [documents] = useState<DocumentProprietaire[]>(
-    initial?.documents || [
-      { id: "piece-identite", nom: "Pièce d’identité", obligatoire: true },
-      {
-        id: "justificatif-domicile",
-        nom: "Justificatif de domicile",
-        obligatoire: false,
-      },
-      {
-        id: "documents-complementaires",
-        nom: "Documents complémentaires",
-        obligatoire: false,
-      },
-    ]
-  );
-
-  const canSave = nom && prenom && email;
-
-  const handleSave = () => {
-    const now = getToday();
-
-    const historique: HistoriqueItem[] = [
-      ...(initial?.historique || []),
-      ...(isEdit
-        ? [
-            {
-              id: `hist-${Date.now()}`,
-              date: getToday(),
-              heure: getNowTime(),
-              utilisateur: "Utilisateur connecté",
-              champ: "Fiche propriétaire",
-              ancienneValeur: "Anciennes informations",
-              nouvelleValeur: "Informations mises à jour",
-            },
-          ]
-        : []),
-    ];
-
-    const proprietaire: ProprietairePersonnePhysique = {
-      id: initial?.id || `pro-${Date.now()}`,
-      reference,
-      typeProprietaire: "personne_physique",
-      statut: initial?.statut || "actif",
-      civilite,
-      nom,
-      prenom,
-      dateNaissance,
-      nationalite,
-      adresse,
-      telephonePrincipal,
-      telephoneSecondaire,
-      email,
-      numeroFiscal,
-      residentFiscalFrancais,
-      paysResidenceFiscale: residentFiscalFrancais ? "" : paysResidenceFiscale,
-      documents,
-      historique,
-      createdAt: initial?.createdAt || now,
-      updatedAt: now,
-    };
-
-    onSave(proprietaire);
-  };
-
-  return (
-    <div
-      className="min-h-screen"
-      style={{
-        backgroundColor: "#f8fafc",
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      <div
-        className="px-4 sm:px-6 py-5"
-        style={{ background: "linear-gradient(135deg,#fff7ed,#fff)" }}
+    );
+  }
+  
+  // ============================================================
+  // WIZARD NAVIGATION
+  // ============================================================
+  function WizardNavigation({
+    currentStep,
+    totalSteps,
+    canGoNext,
+    onPrevious,
+    onNext,
+    onCancel,
+    isLastStep,
+  }: {
+    currentStep: number;
+    totalSteps: number;
+    canGoNext: boolean;
+    onPrevious: () => void;
+    onNext: () => void;
+    onCancel: () => void;
+    isLastStep: boolean;
+  }) {
+    return (
+      <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 mt-8 pt-5"
+        style={{ borderTop: "2px solid #f1f5f9" }}
       >
-        <div className="max-w-3xl mx-auto">
+        <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={onCancel}
-            className="text-xs font-bold mb-3 hover:underline"
-            style={{ color: "#f97316" }}
+            className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl text-sm font-bold"
+            style={{
+              backgroundColor: "#f8fafc",
+              color: "#94a3b8",
+              border: "2px solid #e2e8f0",
+            }}
           >
-            ← Retour
+            Annuler
           </button>
-
-          <h1 className="text-xl font-black" style={{ color: "#1e293b" }}>
-            👤 {isEdit ? "Modifier" : "Nouveau"} propriétaire personne physique
-          </h1>
-
-          <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
-            Référence propriétaire : {reference}
-          </p>
+          {currentStep > 0 && (
+            <button
+              onClick={onPrevious}
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl text-sm font-bold"
+              style={{
+                backgroundColor: "#fff",
+                color: "#64748b",
+                border: "2px solid #e2e8f0",
+              }}
+            >
+              ← Précédent
+            </button>
+          )}
+        </div>
+  
+        <button
+          onClick={onNext}
+          disabled={!canGoNext}
+          className="w-full sm:w-auto px-6 py-2.5 rounded-2xl text-sm font-extrabold text-white transition-all disabled:opacity-40"
+          style={{
+            background: canGoNext
+              ? "linear-gradient(135deg,#f97316,#fb923c)"
+              : "#e2e8f0",
+          }}
+        >
+          {isLastStep ? "✓ Enregistrer" : "Suivant →"}
+        </button>
+      </div>
+    );
+  }
+  
+  // ============================================================
+  // WIZARD WRAPPER LAYOUT
+  // ============================================================
+  function WizardLayout({
+    title,
+    subtitle,
+    reference,
+    steps,
+    currentStep,
+    onCancel,
+    children,
+  }: {
+    title: string;
+    subtitle: string;
+    reference: string;
+    steps: { label: string; emoji: string }[];
+    currentStep: number;
+    onCancel: () => void;
+    children: React.ReactNode;
+  }) {
+    return (
+      <div
+        className="min-h-screen"
+        style={{ backgroundColor: "#f8fafc", fontFamily: inter.style.fontFamily }}
+      >
+        {/* Header */}
+        <div
+          className="px-4 sm:px-6 py-5"
+          style={{ background: "linear-gradient(135deg,#fff7ed,#fff)" }}
+        >
+          <div className="max-w-2xl mx-auto">
+            <button
+              onClick={onCancel}
+              className="text-xs font-bold mb-3 hover:underline"
+              style={{ color: "#f97316" }}
+            >
+              ← Retour
+            </button>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <h1
+                  className="text-xl font-black"
+                  style={{ color: "#1e293b" }}
+                >
+                  {title}
+                </h1>
+                <p className="text-sm mt-0.5" style={{ color: "#94a3b8" }}>
+                  {subtitle}
+                </p>
+              </div>
+              <span
+                className="px-3 py-1 rounded-full text-xs font-bold self-start sm:self-auto"
+                style={{ backgroundColor: "#fff7ed", color: "#f97316" }}
+              >
+                {reference}
+              </span>
+            </div>
+          </div>
+        </div>
+  
+        {/* Step indicator */}
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6">
+          <WizardStepIndicator steps={steps} currentStep={currentStep} />
+        </div>
+  
+        {/* Step content */}
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 pb-12">
+          {children}
         </div>
       </div>
-
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-        {identiteLocked && (
-          <div
-            className="p-4 rounded-3xl"
-            style={{ backgroundColor: "#fef9c3", border: "1px solid #fde68a" }}
-          >
-            <p className="text-sm font-bold" style={{ color: "#854d0e" }}>
-              🔒 Les informations d’identité sont verrouillées car ce propriétaire
-              est déjà associé à au moins un actif.
-            </p>
-          </div>
-        )}
-
+    );
+  }
+  
+  // ============================================================
+  // WIZARD PERSONNE PHYSIQUE
+  // ============================================================
+  const STEPS_PHYSIQUE = [
+    { label: "Identité", emoji: "👤" },
+    { label: "Adresse", emoji: "🏠" },
+    { label: "Contact", emoji: "📞" },
+    { label: "Fiscalité", emoji: "🏛️" },
+    { label: "Documents", emoji: "📎" },
+  ];
+  
+  function WizardProprietairePhysique({
+    reference,
+    initial,
+    hasAssociatedAssets = false,
+    onSave,
+    onCancel,
+  }: {
+    reference: string;
+    initial?: ProprietairePersonnePhysique;
+    hasAssociatedAssets?: boolean;
+    onSave: (p: ProprietairePersonnePhysique) => void;
+    onCancel: () => void;
+  }) {
+    const isEdit = !!initial;
+    const identiteLocked = isEdit && hasAssociatedAssets;
+    const [step, setStep] = useState(0);
+  
+    // Identité
+    const [civilite, setCivilite] = useState<Civilite>(initial?.civilite || "Madame");
+    const [nom, setNom] = useState(initial?.nom || "");
+    const [prenom, setPrenom] = useState(initial?.prenom || "");
+    const [dateNaissance, setDateNaissance] = useState(initial?.dateNaissance || "");
+    const [nationalite, setNationalite] = useState(initial?.nationalite || "");
+  
+    // Adresse
+    const [adresse, setAdresse] = useState<Adresse>(
+      initial?.adresse || {
+        numeroVoie: "",
+        typeVoie: "Rue",
+        nomVoie: "",
+        complementAdresse: "",
+        codePostal: "",
+        ville: "",
+        departement: "",
+        region: "",
+        pays: "France",
+      }
+    );
+  
+    // Contact
+    const [telephonePrincipal, setTelephonePrincipal] = useState(initial?.telephonePrincipal || "");
+    const [telephoneSecondaire, setTelephoneSecondaire] = useState(initial?.telephoneSecondaire || "");
+    const [email, setEmail] = useState(initial?.email || "");
+  
+    // Fiscalité
+    const [numeroFiscal, setNumeroFiscal] = useState(initial?.numeroFiscal || "");
+    const [residentFiscalFrancais, setResidentFiscalFrancais] = useState(
+      initial?.residentFiscalFrancais ?? true
+    );
+    const [paysResidenceFiscale, setPaysResidenceFiscale] = useState(
+      initial?.paysResidenceFiscale || ""
+    );
+  
+    // Documents
+    const [documents] = useState<DocumentProprietaire[]>(
+      initial?.documents || [
+        { id: "pi", nom: "Pièce d'identité", obligatoire: true },
+        { id: "justif", nom: "Justificatif de domicile", obligatoire: false },
+        { id: "fiscal", nom: "Avis d'imposition", obligatoire: false },
+      ]
+    );
+  
+    const canGoNext = useMemo(() => {
+      switch (step) {
+        case 0:
+          return !!(civilite && nom && prenom && dateNaissance && nationalite);
+        case 1:
+          return !!(
+            adresse.numeroVoie &&
+            adresse.typeVoie &&
+            adresse.nomVoie &&
+            adresse.codePostal &&
+            adresse.ville &&
+            adresse.pays
+          );
+        case 2:
+          return !!(telephonePrincipal && email);
+        case 3:
+          return !!(
+            numeroFiscal &&
+            (residentFiscalFrancais || paysResidenceFiscale)
+          );
+        case 4:
+          return true;
+        default:
+          return false;
+      }
+    }, [
+      step, civilite, nom, prenom, dateNaissance, nationalite,
+      adresse, telephonePrincipal, email,
+      numeroFiscal, residentFiscalFrancais, paysResidenceFiscale,
+    ]);
+  
+    const handleNext = () => {
+      if (step < STEPS_PHYSIQUE.length - 1) {
+        setStep((s) => s + 1);
+      } else {
+        const now = getToday();
+        const proprietaire: ProprietairePersonnePhysique = {
+          id: initial?.id || `pro-${Date.now()}`,
+          reference,
+          typeProprietaire: "personne_physique",
+          statut: initial?.statut || "actif",
+          civilite,
+          nom,
+          prenom,
+          dateNaissance,
+          nationalite,
+          adresse,
+          telephonePrincipal,
+          telephoneSecondaire: telephoneSecondaire || undefined,
+          email,
+          numeroFiscal,
+          residentFiscalFrancais,
+          paysResidenceFiscale: residentFiscalFrancais ? undefined : paysResidenceFiscale,
+          documents: documents.map((d) => ({
+            ...d,
+            dateAjout: d.dateAjout || now,
+          })),
+          historique: [
+            ...(initial?.historique || []),
+            ...(isEdit
+              ? [
+                  {
+                    id: `hist-${Date.now()}`,
+                    date: now,
+                    heure: getNowTime(),
+                    utilisateur: "Utilisateur connecté",
+                    champ: "Fiche propriétaire",
+                    ancienneValeur: "Anciennes informations",
+                    nouvelleValeur: "Informations mises à jour",
+                  },
+                ]
+              : []),
+          ],
+          createdAt: initial?.createdAt || now,
+          updatedAt: now,
+        };
+        onSave(proprietaire);
+      }
+    };
+  
+    const stepContent = [
+      // Étape 0 — Identité
+      <div key="identite" className="space-y-5">
         <SectionCard>
-          <SectionTitle emoji="🪪" title="Informations d’identité" />
-
-          <div className="grid sm:grid-cols-2 gap-4">
+          <SectionTitle emoji="👤" title="Identité" />
+          {identiteLocked && (
+            <div
+              className="mb-4 p-3 rounded-2xl text-xs font-bold"
+              style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
+            >
+              ⚠️ Les informations d'identité sont verrouillées car ce propriétaire est associé à des biens.
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormSelect
               label="Civilité"
               value={civilite}
-              onChange={value => setCivilite(value as Civilite)}
+              onChange={(v) => setCivilite(v as Civilite)}
               disabled={identiteLocked}
               required
               options={[
-                { value: "Monsieur", label: "Monsieur" },
                 { value: "Madame", label: "Madame" },
+                { value: "Monsieur", label: "Monsieur" },
               ]}
             />
-
-            <FormInput label="Référence" value={reference} readOnly />
-
             <FormInput
               label="Nom"
               value={nom}
@@ -864,7 +941,6 @@ function FormProprietairePhysique({
               readOnly={identiteLocked}
               required
             />
-
             <FormInput
               label="Prénom"
               value={prenom}
@@ -872,45 +948,56 @@ function FormProprietairePhysique({
               readOnly={identiteLocked}
               required
             />
-
             <FormInput
               label="Date de naissance"
               value={dateNaissance}
               onChange={setDateNaissance}
               type="date"
               readOnly={identiteLocked}
+              required
             />
-
-            <FormInput
-              label="Nationalité"
-              value={nationalite}
-              onChange={setNationalite}
-              readOnly={identiteLocked}
-            />
+            <div className="col-span-1 sm:col-span-2">
+              <FormInput
+                label="Nationalité"
+                value={nationalite}
+                onChange={setNationalite}
+                readOnly={identiteLocked}
+                required
+              />
+            </div>
           </div>
         </SectionCard>
-
+      </div>,
+  
+      // Étape 1 — Adresse
+      <div key="adresse" className="space-y-5">
         <SectionCard>
-          <SectionTitle emoji="📍" title="Coordonnées" />
-
-          <AdresseForm adresse={adresse} setAdresse={setAdresse} />
-
-          <div className="grid sm:grid-cols-2 gap-4 mt-4">
+          <SectionTitle emoji="🏠" title="Adresse" />
+          <AdresseForm adresse={adresse} onChange={setAdresse} />
+        </SectionCard>
+      </div>,
+  
+      // Étape 2 — Contact
+      <div key="contact" className="space-y-5">
+        <SectionCard>
+          <SectionTitle emoji="📞" title="Coordonnées" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormInput
               label="Téléphone principal"
               value={telephonePrincipal}
               onChange={setTelephonePrincipal}
+              type="tel"
+              required
             />
-
             <FormInput
               label="Téléphone secondaire"
               value={telephoneSecondaire}
               onChange={setTelephoneSecondaire}
+              type="tel"
             />
-
-            <div className="sm:col-span-2">
+            <div className="col-span-1 sm:col-span-2">
               <FormInput
-                label="Adresse e-mail"
+                label="E-mail"
                 value={email}
                 onChange={setEmail}
                 type="email"
@@ -919,61 +1006,64 @@ function FormProprietairePhysique({
             </div>
           </div>
         </SectionCard>
-
+      </div>,
+  
+      // Étape 3 — Fiscalité
+      <div key="fiscalite" className="space-y-5">
         <SectionCard>
           <SectionTitle emoji="🏛️" title="Informations fiscales" />
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <FormInput
-              label="Numéro fiscal"
-              value={numeroFiscal}
-              onChange={setNumeroFiscal}
-            />
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="col-span-1 sm:col-span-2">
+              <FormInput
+                label="Numéro fiscal"
+                value={numeroFiscal}
+                onChange={setNumeroFiscal}
+                required
+              />
+            </div>
             <FormSelect
               label="Résident fiscal français"
               value={residentFiscalFrancais ? "oui" : "non"}
-              onChange={value => setResidentFiscalFrancais(value === "oui")}
+              onChange={(v) => setResidentFiscalFrancais(v === "oui")}
               options={[
                 { value: "oui", label: "Oui" },
                 { value: "non", label: "Non" },
               ]}
+              required
             />
-
             {!residentFiscalFrancais && (
-              <div className="sm:col-span-2">
-                <FormInput
-                  label="Pays de résidence fiscale"
-                  value={paysResidenceFiscale}
-                  onChange={setPaysResidenceFiscale}
-                  required
-                />
-              </div>
+              <FormInput
+                label="Pays de résidence fiscale"
+                value={paysResidenceFiscale}
+                onChange={setPaysResidenceFiscale}
+                required
+              />
             )}
           </div>
         </SectionCard>
-
+      </div>,
+  
+      // Étape 4 — Documents
+      <div key="documents" className="space-y-5">
         <SectionCard>
           <SectionTitle emoji="📎" title="Documents" />
-
-          <div className="space-y-2">
-            {documents.map(document => (
+          <div className="space-y-3">
+            {documents.map((doc) => (
               <div
-                key={document.id}
-                className="flex items-center justify-between p-3 rounded-2xl"
+                key={doc.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl"
                 style={{ backgroundColor: "#f8fafc" }}
               >
                 <div>
                   <p className="text-sm font-bold" style={{ color: "#1e293b" }}>
-                    📄 {document.nom}
+                    📄 {doc.nom}
                   </p>
                   <p className="text-xs" style={{ color: "#94a3b8" }}>
-                    {document.obligatoire ? "Obligatoire" : "Facultatif"}
+                    {doc.obligatoire ? "Obligatoire" : "Facultatif"}
                   </p>
                 </div>
-
                 <label
-                  className="px-3 py-1 rounded-xl text-xs font-bold cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer self-start sm:self-auto whitespace-nowrap"
                   style={{ backgroundColor: "#fff7ed", color: "#f97316" }}
                 >
                   + Ajouter
@@ -983,260 +1073,241 @@ function FormProprietairePhysique({
             ))}
           </div>
         </SectionCard>
-
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-3 rounded-2xl text-sm font-bold border-2"
-            style={{ borderColor: "#e2e8f0", color: "#64748b" }}
-          >
-            Annuler
-          </button>
-
-          <button
-            onClick={handleSave}
-            disabled={!canSave}
-            className="flex-1 py-3 rounded-2xl text-white text-sm font-extrabold shadow disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)" }}
-          >
-            ✅ Enregistrer
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// FORMULAIRE PERSONNE MORALE
-// ============================================================
-function FormProprietaireMorale({
-  reference,
-  initial,
-  hasAssociatedAssets = false,
-  onSave,
-  onCancel,
-}: {
-  reference: string;
-  initial?: ProprietairePersonneMorale;
-  hasAssociatedAssets?: boolean;
-  onSave: (proprietaire: ProprietairePersonneMorale) => void;
-  onCancel: () => void;
-}) {
-  const isEdit = !!initial;
-  const identiteLocked = isEdit && hasAssociatedAssets;
-
-  const [raisonSociale, setRaisonSociale] = useState(initial?.raisonSociale || "");
-  const [formeJuridique, setFormeJuridique] = useState<
-    ProprietairePersonneMorale["formeJuridique"]
-  >(initial?.formeJuridique || "SCI");
-  const [siren, setSiren] = useState(initial?.siren || "");
-  const [siret, setSiret] = useState(initial?.siret || "");
-  const [numeroRCS, setNumeroRCS] = useState(initial?.numeroRCS || "");
-  const [capitalSocial, setCapitalSocial] = useState<number>(
-    initial?.capitalSocial || 0
-  );
-  const [dateCreation, setDateCreation] = useState(initial?.dateCreation || "");
-
-  const [adresse, setAdresse] = useState<Adresse>(
-    initial?.adresse || {
-      numeroVoie: "",
-      typeVoie: "Rue",
-      nomVoie: "",
-      complementAdresse: "",
-      codePostal: "",
-      ville: "",
-      departement: "",
-      region: "",
-      pays: "France",
-    }
-  );
-
-  const [telephonePrincipal, setTelephonePrincipal] = useState(
-    initial?.telephonePrincipal || ""
-  );
-  const [telephoneSecondaire, setTelephoneSecondaire] = useState(
-    initial?.telephoneSecondaire || ""
-  );
-  const [email, setEmail] = useState(initial?.email || "");
-
-  const [representantLegal, setRepresentantLegal] = useState(
-    initial?.representantLegal || {
-      civilite: "Madame" as Civilite,
-      nom: "",
-      prenom: "",
-      fonction: "",
-      telephone: "",
-      email: "",
-    }
-  );
-
-  const [documents] = useState<DocumentProprietaire[]>(
-    initial?.documents || [
-      { id: "kbis", nom: "Extrait Kbis", obligatoire: true },
-      { id: "statuts", nom: "Statuts de la société", obligatoire: false },
-      {
-        id: "piece-identite-representant",
-        nom: "Pièce d’identité du représentant légal",
-        obligatoire: false,
-      },
-      {
-        id: "documents-complementaires",
-        nom: "Documents complémentaires",
-        obligatoire: false,
-      },
-    ]
-  );
-
-  const updateRepresentant = (
-    field: keyof ProprietairePersonneMorale["representantLegal"],
-    value: string
-  ) => {
-    setRepresentantLegal({
-      ...representantLegal,
-      [field]: value,
-    });
-  };
-
-  const canSave =
-    raisonSociale &&
-    formeJuridique &&
-    siren &&
-    siret &&
-    representantLegal.nom &&
-    representantLegal.prenom &&
-    representantLegal.fonction;
-
-  const handleSave = () => {
-    const now = getToday();
-
-    const historique: HistoriqueItem[] = [
-      ...(initial?.historique || []),
-      ...(isEdit
-        ? [
-            {
-              id: `hist-${Date.now()}`,
-              date: getToday(),
-              heure: getNowTime(),
-              utilisateur: "Utilisateur connecté",
-              champ: "Fiche propriétaire",
-              ancienneValeur: "Anciennes informations",
-              nouvelleValeur: "Informations mises à jour",
-            },
-          ]
-        : []),
+      </div>,
     ];
-
-    const proprietaire: ProprietairePersonneMorale = {
-      id: initial?.id || `pro-${Date.now()}`,
-      reference,
-      typeProprietaire: "personne_morale",
-      statut: initial?.statut || "actif",
-      raisonSociale,
-      formeJuridique,
-      siren,
-      siret,
-      numeroRCS,
-      capitalSocial,
-      dateCreation,
-      adresse,
-      telephonePrincipal,
-      telephoneSecondaire,
-      email,
-      representantLegal,
-      documents,
-      historique,
-      createdAt: initial?.createdAt || now,
-      updatedAt: now,
-    };
-
-    onSave(proprietaire);
-  };
-
-  return (
-    <div
-      className="min-h-screen"
-      style={{
-        backgroundColor: "#f8fafc",
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      <div
-        className="px-4 sm:px-6 py-5"
-        style={{ background: "linear-gradient(135deg,#faf5ff,#fff)" }}
+  
+    return (
+      <WizardLayout
+        title={isEdit ? "Modifier le propriétaire" : "Nouveau propriétaire"}
+        subtitle="Personne physique"
+        reference={reference}
+        steps={STEPS_PHYSIQUE}
+        currentStep={step}
+        onCancel={onCancel}
       >
-        <div className="max-w-3xl mx-auto">
-          <button
-            onClick={onCancel}
-            className="text-xs font-bold mb-3 hover:underline"
-            style={{ color: "#8b5cf6" }}
-          >
-            ← Retour
-          </button>
-
-          <h1 className="text-xl font-black" style={{ color: "#1e293b" }}>
-            🏢 {isEdit ? "Modifier" : "Nouveau"} propriétaire personne morale
-          </h1>
-
-          <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
-            Référence propriétaire : {reference}
-          </p>
+        <div className="space-y-5 mt-6">
+          {stepContent[step]}
+          <WizardNavigation
+            currentStep={step}
+            totalSteps={STEPS_PHYSIQUE.length}
+            canGoNext={canGoNext}
+            onPrevious={() => setStep((s) => s - 1)}
+            onNext={handleNext}
+            onCancel={onCancel}
+            isLastStep={step === STEPS_PHYSIQUE.length - 1}
+          />
         </div>
-      </div>
-
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-        {identiteLocked && (
-          <div
-            className="p-4 rounded-3xl"
-            style={{ backgroundColor: "#fef9c3", border: "1px solid #fde68a" }}
-          >
-            <p className="text-sm font-bold" style={{ color: "#854d0e" }}>
-              🔒 Les informations juridiques de la société sont verrouillées car
-              ce propriétaire est déjà associé à au moins un actif.
-            </p>
-          </div>
-        )}
-
+      </WizardLayout>
+    );
+  }
+  
+  // ============================================================
+  // WIZARD PERSONNE MORALE
+  // ============================================================
+  const STEPS_MORALE = [
+    { label: "Société", emoji: "🏢" },
+    { label: "Adresse", emoji: "🏠" },
+    { label: "Contact", emoji: "📞" },
+    { label: "Représentant", emoji: "👤" },
+    { label: "Documents", emoji: "📎" },
+  ];
+  
+  function WizardProprietaireMorale({
+    reference,
+    initial,
+    hasAssociatedAssets = false,
+    onSave,
+    onCancel,
+  }: {
+    reference: string;
+    initial?: ProprietairePersonneMorale;
+    hasAssociatedAssets?: boolean;
+    onSave: (p: ProprietairePersonneMorale) => void;
+    onCancel: () => void;
+  }) {
+    const isEdit = !!initial;
+    const identiteLocked = isEdit && hasAssociatedAssets;
+    const [step, setStep] = useState(0);
+  
+    // Société
+    const [raisonSociale, setRaisonSociale] = useState(initial?.raisonSociale || "");
+    const [formeJuridique, setFormeJuridique] = useState<ProprietairePersonneMorale["formeJuridique"]>(
+      initial?.formeJuridique || "SCI"
+    );
+    const [siren, setSiren] = useState(initial?.siren || "");
+    const [siret, setSiret] = useState(initial?.siret || "");
+    const [villeImmatriculation, setVilleImmatriculation] = useState(
+      initial?.villeImmatriculation || ""
+    );
+    const [capitalSocial, setCapitalSocial] = useState(
+      initial?.capitalSocial ? String(initial.capitalSocial) : ""
+    );
+    const [dateCreation, setDateCreation] = useState(initial?.dateCreation || "");
+  
+    // Adresse
+    const [adresse, setAdresse] = useState<Adresse>(
+      initial?.adresse || {
+        numeroVoie: "",
+        typeVoie: "Rue",
+        nomVoie: "",
+        complementAdresse: "",
+        codePostal: "",
+        ville: "",
+        departement: "",
+        region: "",
+        pays: "France",
+      }
+    );
+  
+    // Contact
+    const [telephonePrincipal, setTelephonePrincipal] = useState(initial?.telephonePrincipal || "");
+    const [telephoneSecondaire, setTelephoneSecondaire] = useState(initial?.telephoneSecondaire || "");
+    const [email, setEmail] = useState(initial?.email || "");
+  
+    // Représentant légal
+    const [representantLegal, setRepresentantLegal] = useState(
+      initial?.representantLegal || {
+        civilite: "Madame" as Civilite,
+        nom: "",
+        prenom: "",
+        fonction: "",
+        telephone: "",
+        email: "",
+      }
+    );
+  
+    // Documents
+    const [documents] = useState<DocumentProprietaire[]>(
+      initial?.documents || [
+        { id: "kbis", nom: "Extrait Kbis", obligatoire: true },
+        { id: "statuts", nom: "Statuts de la société", obligatoire: false },
+        { id: "pi-rep", nom: "Pièce d'identité du représentant légal", obligatoire: false },
+        { id: "docs-comp", nom: "Documents complémentaires", obligatoire: false },
+      ]
+    );
+  
+    const updateRepresentant = (
+      field: keyof ProprietairePersonneMorale["representantLegal"],
+      value: string
+    ) => {
+      setRepresentantLegal({ ...representantLegal, [field]: value });
+    };
+  
+    const canGoNext = useMemo(() => {
+      switch (step) {
+        case 0:
+          return !!(raisonSociale && formeJuridique && siren && siret);
+        case 1:
+          return !!(
+            adresse.numeroVoie &&
+            adresse.typeVoie &&
+            adresse.nomVoie &&
+            adresse.codePostal &&
+            adresse.ville &&
+            adresse.pays
+          );
+        case 2:
+          return !!(telephonePrincipal && email);
+        case 3:
+          return !!(
+            representantLegal.nom &&
+            representantLegal.prenom &&
+            representantLegal.fonction
+          );
+        case 4:
+          return true;
+        default:
+          return false;
+      }
+    }, [
+      step, raisonSociale, formeJuridique, siren, siret,
+      adresse, telephonePrincipal, email, representantLegal,
+    ]);
+  
+    const handleNext = () => {
+      if (step < STEPS_MORALE.length - 1) {
+        setStep((s) => s + 1);
+      } else {
+        const now = getToday();
+        const proprietaire: ProprietairePersonneMorale = {
+          id: initial?.id || `pro-${Date.now()}`,
+          reference,
+          typeProprietaire: "personne_morale",
+          statut: initial?.statut || "actif",
+          raisonSociale,
+          formeJuridique,
+          siren,
+          siret,
+          villeImmatriculation: villeImmatriculation || undefined,
+          capitalSocial: capitalSocial ? Number(capitalSocial) : undefined,
+          dateCreation: dateCreation || undefined,
+          adresse,
+          telephonePrincipal,
+          telephoneSecondaire: telephoneSecondaire || undefined,
+          email,
+          representantLegal,
+          documents: documents.map((d) => ({
+            ...d,
+            dateAjout: d.dateAjout || now,
+          })),
+          historique: [
+            ...(initial?.historique || []),
+            ...(isEdit
+              ? [
+                  {
+                    id: `hist-${Date.now()}`,
+                    date: now,
+                    heure: getNowTime(),
+                    utilisateur: "Utilisateur connecté",
+                    champ: "Fiche propriétaire",
+                    ancienneValeur: "Anciennes informations",
+                    nouvelleValeur: "Informations mises à jour",
+                  },
+                ]
+              : []),
+          ],
+          createdAt: initial?.createdAt || now,
+          updatedAt: now,
+        };
+        onSave(proprietaire);
+      }
+    };
+  
+    const stepContent = [
+      // Étape 0 — Société
+      <div key="societe" className="space-y-5">
         <SectionCard>
-          <SectionTitle emoji="🏢" title="Informations de la société" />
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <FormInput
-              label="Référence"
-              value={reference}
-              readOnly
-            />
-
-            <FormInput
-              label="Raison sociale"
-              value={raisonSociale}
-              onChange={setRaisonSociale}
-              readOnly={identiteLocked}
-              required
-            />
-
+          <SectionTitle emoji="🏢" title="Informations société" />
+          {identiteLocked && (
+            <div
+              className="mb-4 p-3 rounded-2xl text-xs font-bold"
+              style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
+            >
+              ⚠️ Les informations de la société sont verrouillées car ce propriétaire est associé à des biens.
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="col-span-1 sm:col-span-2">
+              <FormInput
+                label="Raison sociale"
+                value={raisonSociale}
+                onChange={setRaisonSociale}
+                readOnly={identiteLocked}
+                required
+              />
+            </div>
             <FormSelect
               label="Forme juridique"
               value={formeJuridique}
-              onChange={value =>
-                setFormeJuridique(
-                  value as ProprietairePersonneMorale["formeJuridique"]
-                )
+              onChange={(v) =>
+                setFormeJuridique(v as ProprietairePersonneMorale["formeJuridique"])
               }
               disabled={identiteLocked}
               required
               options={[
-                "SCI",
-                "SARL",
-                "EURL",
-                "SAS",
-                "SASU",
-                "SA",
-                "Association",
-                "Autre",
-              ].map(value => ({ value, label: value }))}
+                "SCI","SARL","EURL","SAS","SASU","SA","Association","Autre",
+              ].map((v) => ({ value: v, label: v }))}
             />
-
             <FormInput
               label="SIREN"
               value={siren}
@@ -1244,7 +1315,6 @@ function FormProprietaireMorale({
               readOnly={identiteLocked}
               required
             />
-
             <FormInput
               label="SIRET"
               value={siret}
@@ -1252,134 +1322,137 @@ function FormProprietaireMorale({
               readOnly={identiteLocked}
               required
             />
-
             <FormInput
-              label="Numéro RCS"
-              value={numeroRCS}
-              onChange={setNumeroRCS}
+              label="Ville d'immatriculation"
+              value={villeImmatriculation}
+              onChange={setVilleImmatriculation}
+              readOnly={identiteLocked}
             />
-
             <FormInput
               label="Capital social (€)"
               value={capitalSocial}
-              onChange={value => setCapitalSocial(Number(value))}
+              onChange={setCapitalSocial}
               type="number"
             />
-
             <FormInput
               label="Date de création"
               value={dateCreation}
               onChange={setDateCreation}
-              readOnly={identiteLocked}
               type="date"
             />
           </div>
         </SectionCard>
-
+      </div>,
+  
+      // Étape 1 — Adresse
+      <div key="adresse" className="space-y-5">
         <SectionCard>
-          <SectionTitle emoji="📍" title="Adresse du siège social" />
-          <AdresseForm adresse={adresse} setAdresse={setAdresse} />
+          <SectionTitle emoji="🏠" title="Adresse du siège" />
+          <AdresseForm adresse={adresse} onChange={setAdresse} />
         </SectionCard>
-
+      </div>,
+  
+      // Étape 2 — Contact
+      <div key="contact" className="space-y-5">
         <SectionCard>
-          <SectionTitle emoji="☎️" title="Coordonnées de la société" />
-
-          <div className="grid sm:grid-cols-2 gap-4">
+          <SectionTitle emoji="📞" title="Coordonnées" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormInput
               label="Téléphone principal"
               value={telephonePrincipal}
               onChange={setTelephonePrincipal}
+              type="tel"
+              required
             />
-
             <FormInput
               label="Téléphone secondaire"
               value={telephoneSecondaire}
               onChange={setTelephoneSecondaire}
+              type="tel"
             />
-
-            <div className="sm:col-span-2">
+            <div className="col-span-1 sm:col-span-2">
               <FormInput
                 label="E-mail"
                 value={email}
                 onChange={setEmail}
                 type="email"
+                required
               />
             </div>
           </div>
         </SectionCard>
-
+      </div>,
+  
+      // Étape 3 — Représentant légal
+      <div key="representant" className="space-y-5">
         <SectionCard>
           <SectionTitle emoji="👤" title="Représentant légal" />
-
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormSelect
               label="Civilité"
               value={representantLegal.civilite}
-              onChange={value => updateRepresentant("civilite", value)}
+              onChange={(v) => updateRepresentant("civilite", v)}
               options={[
-                { value: "Monsieur", label: "Monsieur" },
                 { value: "Madame", label: "Madame" },
+                { value: "Monsieur", label: "Monsieur" },
               ]}
-            />
-
-            <FormInput
-              label="Fonction"
-              value={representantLegal.fonction}
-              onChange={value => updateRepresentant("fonction", value)}
               required
-              placeholder="Gérant, Président, Associé gérant..."
             />
-
             <FormInput
               label="Nom"
               value={representantLegal.nom}
-              onChange={value => updateRepresentant("nom", value)}
+              onChange={(v) => updateRepresentant("nom", v)}
               required
             />
-
             <FormInput
               label="Prénom"
               value={representantLegal.prenom}
-              onChange={value => updateRepresentant("prenom", value)}
+              onChange={(v) => updateRepresentant("prenom", v)}
               required
             />
-
+            <FormInput
+              label="Fonction"
+              value={representantLegal.fonction}
+              onChange={(v) => updateRepresentant("fonction", v)}
+              required
+            />
             <FormInput
               label="Téléphone"
               value={representantLegal.telephone}
-              onChange={value => updateRepresentant("telephone", value)}
+              onChange={(v) => updateRepresentant("telephone", v)}
+              type="tel"
             />
-
             <FormInput
               label="E-mail"
               value={representantLegal.email}
-              onChange={value => updateRepresentant("email", value)}
+              onChange={(v) => updateRepresentant("email", v)}
               type="email"
             />
           </div>
         </SectionCard>
-
+      </div>,
+  
+      // Étape 4 — Documents
+      <div key="documents" className="space-y-5">
         <SectionCard>
           <SectionTitle emoji="📎" title="Documents" />
-
-          <div className="space-y-2">
-            {documents.map(document => (
+          <div className="space-y-3">
+            {documents.map((doc) => (
               <div
-                key={document.id}
-                className="flex items-center justify-between p-3 rounded-2xl"
+                key={doc.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl"
                 style={{ backgroundColor: "#f8fafc" }}
               >
                 <div>
                   <p className="text-sm font-bold" style={{ color: "#1e293b" }}>
-                    📄 {document.nom}
+                    📄 {doc.nom}
                   </p>
                   <p className="text-xs" style={{ color: "#94a3b8" }}>
-                    {document.obligatoire ? "Obligatoire" : "Facultatif"}
+                    {doc.obligatoire ? "Obligatoire" : "Facultatif"}
                   </p>
                 </div>
-
                 <label
-                  className="px-3 py-1 rounded-xl text-xs font-bold cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer self-start sm:self-auto whitespace-nowrap"
                   style={{ backgroundColor: "#f3e8ff", color: "#8b5cf6" }}
                 >
                   + Ajouter
@@ -1389,774 +1462,794 @@ function FormProprietaireMorale({
             ))}
           </div>
         </SectionCard>
-
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-3 rounded-2xl text-sm font-bold border-2"
-            style={{ borderColor: "#e2e8f0", color: "#64748b" }}
-          >
-            Annuler
-          </button>
-
-          <button
-            onClick={handleSave}
-            disabled={!canSave}
-            className="flex-1 py-3 rounded-2xl text-white text-sm font-extrabold shadow disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)" }}
-          >
-            ✅ Enregistrer
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// VUE DÉTAIL PROPRIÉTAIRE
-// ============================================================
-function VueDetailProprietaire({
-  proprietaire,
-  biensAssocies,
-  onBack,
-  onEdit,
-  onDelete,
-  onArchive,
-  onOpenActif,
-}: {
-  proprietaire: Proprietaire;
-  biensAssocies: BienAssocie[];
-  onBack: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onArchive: () => void;
-  onOpenActif: (actif: BienAssocie) => void;
-}) {
-  const [onglet, setOnglet] = useState<
-    "infos" | "biens" | "documents" | "historique"
-  >("infos");
-
-  const hasAssociatedAssets = biensAssocies.length > 0;
-
-  const onglets = [
-    { id: "infos", label: "Informations", emoji: "📋" },
-    { id: "biens", label: "Biens associés", emoji: "🏠" },
-    { id: "documents", label: "Documents", emoji: "📎" },
-    { id: "historique", label: "Historique", emoji: "🕐" },
-  ] as const;
-
-  return (
-    <div
-      className="min-h-screen"
-      style={{
-        backgroundColor: "#f8fafc",
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      <div
-        className="px-4 sm:px-6 py-5"
-        style={{ background: "linear-gradient(135deg,#fff7ed,#fff)" }}
+      </div>,
+    ];
+  
+    return (
+      <WizardLayout
+        title={isEdit ? "Modifier le propriétaire" : "Nouveau propriétaire"}
+        subtitle="Personne morale"
+        reference={reference}
+        steps={STEPS_MORALE}
+        currentStep={step}
+        onCancel={onCancel}
       >
-        <div className="max-w-4xl mx-auto">
-          <button
-            onClick={onBack}
-            className="text-xs font-bold mb-3 hover:underline"
-            style={{ color: "#f97316" }}
-          >
-            ← Propriétaires
-          </button>
-
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-black" style={{ color: "#1e293b" }}>
-                  {proprietaire.typeProprietaire === "personne_physique"
-                    ? "👤"
-                    : "🏢"}{" "}
-                  {getNomAffichage(proprietaire)}
-                </h1>
-
-                <StatutBadge statut={proprietaire.statut} />
-              </div>
-
-              <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
-                {proprietaire.reference} ·{" "}
-                {getTypeProprietaireLabel(proprietaire.typeProprietaire)}
-              </p>
-            </div>
-
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={onEdit}
-                className="px-4 py-2 rounded-2xl text-sm font-bold border-2"
-                style={{
-                  borderColor: "#f97316",
-                  color: "#f97316",
-                  backgroundColor: "#fff7ed",
-                }}
-              >
-                ✏️ Modifier
-              </button>
-
-              <button
-                onClick={onArchive}
-                className="px-4 py-2 rounded-2xl text-sm font-bold border-2"
-                style={{
-                  borderColor: "#94a3b8",
-                  color: "#64748b",
-                  backgroundColor: "#fff",
-                }}
-              >
-                📦 Archiver
-              </button>
-
-              <button
-                onClick={onDelete}
-                className="px-4 py-2 rounded-2xl text-sm font-bold border-2"
-                style={{
-                  borderColor: "#fecaca",
-                  color: "#ef4444",
-                  backgroundColor: "#fef2f2",
-                }}
-              >
-                🗑 Supprimer
-              </button>
-            </div>
-          </div>
-
-          <div className="flex gap-2 mt-5 overflow-x-auto pb-1">
-            {onglets.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setOnglet(item.id)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap"
-                style={{
-                  backgroundColor: onglet === item.id ? "#f97316" : "#fff",
-                  color: onglet === item.id ? "#fff" : "#64748b",
-                }}
-              >
-                {item.emoji} {item.label}
-              </button>
-            ))}
-          </div>
+        <div className="space-y-5 mt-6">
+          {stepContent[step]}
+          <WizardNavigation
+            currentStep={step}
+            totalSteps={STEPS_MORALE.length}
+            canGoNext={canGoNext}
+            onPrevious={() => setStep((s) => s - 1)}
+            onNext={handleNext}
+            onCancel={onCancel}
+            isLastStep={step === STEPS_MORALE.length - 1}
+          />
         </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-        {hasAssociatedAssets && (
-          <div
-            className="p-4 rounded-3xl"
-            style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe" }}
-          >
-            <p className="text-sm font-bold" style={{ color: "#1d4ed8" }}>
-              🔒 Ce propriétaire est associé à au moins un actif. Certaines
-              informations d’identité sont verrouillées pour préserver la
-              cohérence des baux, contrats et documents déjà générés.
+      </WizardLayout>
+    );
+  }
+  // ============================================================
+// CHOIX TYPE PROPRIÉTAIRE
+// ============================================================
+function ChoixTypeProprietaire({
+    onRetour,
+    onChoix,
+  }: {
+    onRetour: () => void;
+    onChoix: (type: TypeProprietaire) => void;
+  }) {
+    return (
+      <div
+        className="min-h-screen"
+        style={{ backgroundColor: "#f8fafc", fontFamily: inter.style.fontFamily }}
+      >
+        <div
+          className="px-4 sm:px-6 py-5"
+          style={{ background: "linear-gradient(135deg,#fff7ed,#fff)" }}
+        >
+          <div className="max-w-2xl mx-auto">
+            <button
+              onClick={onRetour}
+              className="text-xs font-bold mb-3 hover:underline"
+              style={{ color: "#f97316" }}
+            >
+              ← Propriétaires
+            </button>
+            <h1 className="text-xl font-black" style={{ color: "#1e293b" }}>
+              Nouveau propriétaire
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
+              Choisissez le type de propriétaire à créer.
             </p>
           </div>
-        )}
-
-        {onglet === "infos" && (
-          <>
-            {proprietaire.typeProprietaire === "personne_physique" ? (
-              <SectionCard>
-                <SectionTitle emoji="🪪" title="Identité" />
-
-                <div className="grid sm:grid-cols-3 gap-3">
-                  <InfoRow label="Civilité" value={proprietaire.civilite} />
-                  <InfoRow label="Nom" value={proprietaire.nom} />
-                  <InfoRow label="Prénom" value={proprietaire.prenom} />
-                  <InfoRow
-                    label="Date de naissance"
-                    value={proprietaire.dateNaissance}
-                  />
-                  <InfoRow
-                    label="Nationalité"
-                    value={proprietaire.nationalite}
-                  />
-                  <InfoRow
-                    label="Résident fiscal français"
-                    value={proprietaire.residentFiscalFrancais ? "Oui" : "Non"}
-                  />
-                </div>
-              </SectionCard>
-            ) : (
-              <SectionCard>
-                <SectionTitle emoji="🏢" title="Informations société" />
-
-                <div className="grid sm:grid-cols-3 gap-3">
-                  <InfoRow
-                    label="Raison sociale"
-                    value={proprietaire.raisonSociale}
-                  />
-                  <InfoRow
-                    label="Forme juridique"
-                    value={proprietaire.formeJuridique}
-                  />
-                  <InfoRow label="SIREN" value={proprietaire.siren} />
-                  <InfoRow label="SIRET" value={proprietaire.siret} />
-                  <InfoRow
-                    label="RCS"
-                    value={proprietaire.numeroRCS || "—"}
-                  />
-                  <InfoRow
-                    label="Capital"
-                    value={
-                      proprietaire.capitalSocial
-                        ? `${proprietaire.capitalSocial} €`
-                        : "—"
-                    }
-                  />
-                </div>
-              </SectionCard>
-            )}
-
-            <SectionCard>
-              <SectionTitle emoji="📍" title="Coordonnées" />
-
-              <div className="grid sm:grid-cols-3 gap-3">
-                <InfoRow
-                  label="Adresse"
-                  value={getAdresseComplete(proprietaire.adresse)}
-                />
-                <InfoRow
-                  label="Téléphone principal"
-                  value={proprietaire.telephonePrincipal}
-                />
-                <InfoRow
-                  label="Téléphone secondaire"
-                  value={proprietaire.telephoneSecondaire || "—"}
-                />
-                <InfoRow label="E-mail" value={proprietaire.email} />
-              </div>
-            </SectionCard>
-
-            {proprietaire.typeProprietaire === "personne_morale" && (
-              <SectionCard>
-                <SectionTitle emoji="👤" title="Représentant légal" />
-
-                <div className="grid sm:grid-cols-3 gap-3">
-                  <InfoRow
-                    label="Civilité"
-                    value={proprietaire.representantLegal.civilite}
-                  />
-                  <InfoRow
-                    label="Nom"
-                    value={proprietaire.representantLegal.nom}
-                  />
-                  <InfoRow
-                    label="Prénom"
-                    value={proprietaire.representantLegal.prenom}
-                  />
-                  <InfoRow
-                    label="Fonction"
-                    value={proprietaire.representantLegal.fonction}
-                  />
-                  <InfoRow
-                    label="Téléphone"
-                    value={proprietaire.representantLegal.telephone}
-                  />
-                  <InfoRow
-                    label="E-mail"
-                    value={proprietaire.representantLegal.email}
-                  />
-                </div>
-              </SectionCard>
-            )}
-          </>
-        )}
-
-        {onglet === "biens" && (
-          <SectionCard>
-            <SectionTitle emoji="🏠" title="Biens associés" />
-
-            {biensAssocies.length === 0 ? (
-              <p className="text-sm text-center py-8" style={{ color: "#94a3b8" }}>
-                Aucun actif associé à ce propriétaire.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {biensAssocies.map(actif => (
-                  <button
-                    key={actif.id}
-                    onClick={() => onOpenActif(actif)}
-                    className="w-full p-3 rounded-2xl text-left flex items-center justify-between gap-3"
-                    style={{ backgroundColor: "#f8fafc" }}
-                  >
-                    <div>
-                      <p className="text-sm font-extrabold" style={{ color: "#1e293b" }}>
-                        {actif.nom}
-                      </p>
-                      <p className="text-xs" style={{ color: "#94a3b8" }}>
-                        {actif.reference} · {getTypeActifLabel(actif.typeActif)} ·{" "}
-                        {actif.adresse}
-                      </p>
-                    </div>
-
-                    <StatutActifBadge statut={actif.statut} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </SectionCard>
-        )}
-
-        {onglet === "documents" && (
-          <SectionCard>
-            <SectionTitle emoji="📎" title="Documents" />
-
-            <div className="space-y-2">
-              {proprietaire.documents.map(document => (
-                <div
-                  key={document.id}
-                  className="flex items-center justify-between p-3 rounded-2xl"
-                  style={{ backgroundColor: "#f8fafc" }}
-                >
-                  <div>
-                    <p className="text-sm font-bold" style={{ color: "#1e293b" }}>
-                      📄 {document.nom}
-                    </p>
-                    <p className="text-xs" style={{ color: "#94a3b8" }}>
-                      {document.obligatoire ? "Obligatoire" : "Facultatif"}
-                      {document.dateAjout ? ` · Ajouté le ${document.dateAjout}` : ""}
-                    </p>
-                  </div>
-
-                  <button
-                    className="px-3 py-1 rounded-xl text-xs font-bold"
-                    style={{ backgroundColor: "#eff6ff", color: "#3b82f6" }}
-                  >
-                    Voir
-                  </button>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        )}
-
-        {onglet === "historique" && (
-          <SectionCard>
-            <SectionTitle emoji="🕐" title="Historique" />
-
-            {proprietaire.historique.length === 0 ? (
-              <p className="text-sm text-center py-8" style={{ color: "#94a3b8" }}>
-                Aucune modification enregistrée.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {proprietaire.historique.map(item => (
-                  <div
-                    key={item.id}
-                    className="p-3 rounded-2xl"
-                    style={{ backgroundColor: "#f8fafc" }}
-                  >
-                    <div className="flex justify-between gap-3 mb-1">
-                      <p className="text-xs font-extrabold" style={{ color: "#1e293b" }}>
-                        {item.champ}
-                      </p>
-                      <p className="text-xs" style={{ color: "#94a3b8" }}>
-                        {item.date} à {item.heure}
-                      </p>
-                    </div>
-
-                    <p className="text-xs" style={{ color: "#64748b" }}>
-                      {item.ancienneValeur} → {item.nouvelleValeur}
-                    </p>
-
-                    <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
-                      Par {item.utilisateur}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </SectionCard>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// LISTE PROPRIÉTAIRES
-// ============================================================
-function VueListeProprietaires({
-  proprietaires,
-  biensAssocies,
-  limiteAtteinte,
-  onAdd,
-  onSelect,
-}: {
-  proprietaires: Proprietaire[];
-  biensAssocies: BienAssocie[];
-  limiteAtteinte: boolean;
-  onAdd: () => void;
-  onSelect: (proprietaire: Proprietaire) => void;
-}) {
-  const [recherche, setRecherche] = useState("");
-  const [showArchives, setShowArchives] = useState(false);
-
-  const proprietairesFiltres = proprietaires.filter(proprietaire => {
-    if (!showArchives && proprietaire.statut === "archive") return false;
-
-    const query = recherche.toLowerCase();
-
-    const match =
-      getNomAffichage(proprietaire).toLowerCase().includes(query) ||
-      proprietaire.reference.toLowerCase().includes(query) ||
-      proprietaire.email.toLowerCase().includes(query);
-
-    return match;
-  });
-
-  return (
-    <div
-      className="min-h-screen"
-      style={{
-        backgroundColor: "#f8fafc",
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      <div
-        className="px-4 sm:px-6 py-5"
-        style={{ background: "linear-gradient(135deg,#fff7ed,#fff)" }}
-      >
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <h1 className="text-2xl font-black" style={{ color: "#1e293b" }}>
-                👥 Propriétaires
-              </h1>
-
-              <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
-                Référentiel officiel des bailleurs de la plateforme.
-              </p>
-            </div>
-
+        </div>
+  
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
-              onClick={onAdd}
-              disabled={limiteAtteinte}
-              className="px-5 py-2.5 rounded-2xl text-white text-sm font-extrabold shadow-lg disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#f97316,#fb923c)" }}
+              onClick={() => onChoix("personne_physique")}
+              className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-lg transition text-left border-2"
+              style={{ borderColor: "#e2e8f0" }}
             >
-              + Ajouter un propriétaire
+              <div
+                className="w-14 h-14 rounded-3xl flex items-center justify-center text-3xl mb-4"
+                style={{ background: "linear-gradient(135deg,#f97316,#fb923c)" }}
+              >
+                👤
+              </div>
+              <p className="font-extrabold text-base mb-1" style={{ color: "#1e293b" }}>
+                Personne physique
+              </p>
+              <p className="text-xs" style={{ color: "#94a3b8" }}>
+                Particulier : bailleur individuel, propriétaire en nom propre.
+              </p>
+            </button>
+  
+            <button
+              onClick={() => onChoix("personne_morale")}
+              className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-lg transition text-left border-2"
+              style={{ borderColor: "#e2e8f0" }}
+            >
+              <div
+                className="w-14 h-14 rounded-3xl flex items-center justify-center text-3xl mb-4"
+                style={{ background: "linear-gradient(135deg,#8b5cf6,#a78bfa)" }}
+              >
+                🏢
+              </div>
+              <p className="font-extrabold text-base mb-1" style={{ color: "#1e293b" }}>
+                Personne morale
+              </p>
+              <p className="text-xs" style={{ color: "#94a3b8" }}>
+                Société ou structure juridique : SCI, SARL, SAS, association ou autre forme morale.
+              </p>
             </button>
           </div>
-
-          {limiteAtteinte && (
-            <div
-              className="mt-4 p-3 rounded-2xl"
-              style={{ backgroundColor: "#fef9c3", border: "1px solid #fde68a" }}
+        </div>
+      </div>
+    );
+  }
+  
+  // ============================================================
+  // DETAIL PROPRIÉTAIRE
+  // ============================================================
+  function DetailProprietaire({
+    proprietaire,
+    biensAssocies,
+    onBack,
+    onEdit,
+    onDelete,
+    onArchive,
+  }: {
+    proprietaire: Proprietaire;
+    biensAssocies: BienAssocie[];
+    onBack: () => void;
+    onEdit: () => void;
+    onDelete: () => void;
+    onArchive: () => void;
+  }) {
+    const [onglet, setOnglet] = useState<"infos" | "biens" | "documents" | "historique">("infos");
+  
+    const onglets = [
+      { id: "infos" as const, label: "Informations", emoji: "📋" },
+      { id: "biens" as const, label: "Biens associés", emoji: "🏠" },
+      { id: "documents" as const, label: "Documents", emoji: "📎" },
+      { id: "historique" as const, label: "Historique", emoji: "🕐" },
+    ];
+  
+    return (
+      <div
+        className="min-h-screen"
+        style={{ backgroundColor: "#f8fafc", fontFamily: inter.style.fontFamily }}
+      >
+        {/* Header */}
+        <div
+          className="px-4 sm:px-6 py-5"
+          style={{ background: "linear-gradient(135deg,#fff7ed,#fff)" }}
+        >
+          <div className="max-w-4xl mx-auto">
+            <button
+              onClick={onBack}
+              className="text-xs font-bold mb-3 hover:underline"
+              style={{ color: "#f97316" }}
             >
-              <p className="text-sm font-bold" style={{ color: "#854d0e" }}>
-                Vous avez atteint le nombre maximum de propriétaires autorisés
-                par votre abonnement.
-              </p>
+              ← Propriétaires
+            </button>
+  
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl font-black" style={{ color: "#1e293b" }}>
+                    {proprietaire.typeProprietaire === "personne_physique" ? "👤" : "🏢"}{" "}
+                    {getNomAffichage(proprietaire)}
+                  </h1>
+                  <StatutBadge statut={proprietaire.statut} />
+                </div>
+                <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
+                  {proprietaire.reference} • {getTypeProprietaireLabel(proprietaire.typeProprietaire)}
+                </p>
+              </div>
+  
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={onEdit}
+                  className="px-4 py-2 rounded-2xl text-sm font-bold"
+                  style={{ backgroundColor: "#f3e8ff", color: "#8b5cf6" }}
+                >
+                  ✏️ Modifier
+                </button>
+                {proprietaire.statut === "actif" && (
+                  <button
+                    onClick={onArchive}
+                    className="px-4 py-2 rounded-2xl text-sm font-bold"
+                    style={{ backgroundColor: "#eff6ff", color: "#3b82f6" }}
+                  >
+                    📦 Archiver
+                  </button>
+                )}
+                <button
+                  onClick={onDelete}
+                  className="px-4 py-2 rounded-2xl text-sm font-bold"
+                  style={{ backgroundColor: "#fef2f2", color: "#ef4444" }}
+                >
+                  🗑 Supprimer
+                </button>
+              </div>
             </div>
+  
+            {/* Onglets */}
+            <div className="flex gap-2 mt-5 overflow-x-auto pb-1">
+              {onglets.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setOnglet(item.id)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all"
+                  style={{
+                    backgroundColor: onglet === item.id ? "#f97316" : "#fff",
+                    color: onglet === item.id ? "#fff" : "#64748b",
+                  }}
+                >
+                  {item.emoji} {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+  
+        {/* Content */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+  
+          {/* ── ONGLET INFOS ── */}
+          {onglet === "infos" && (
+            <>
+              {/* Informations générales */}
+              <SectionCard>
+                <SectionTitle emoji="📋" title="Informations générales" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <InfoRow label="Référence" value={proprietaire.reference} />
+                  <InfoRow label="Type" value={getTypeProprietaireLabel(proprietaire.typeProprietaire)} />
+                  <InfoRow label="Statut" value={proprietaire.statut === "actif" ? "Actif" : "Archivé"} />
+                  <InfoRow label="Créé le" value={proprietaire.createdAt} />
+  
+                  {proprietaire.typeProprietaire === "personne_physique" && (
+                    <>
+                      <InfoRow label="Civilité" value={proprietaire.civilite} />
+                      <InfoRow label="Nom" value={proprietaire.nom} />
+                      <InfoRow label="Prénom" value={proprietaire.prenom} />
+                      <InfoRow label="Date de naissance" value={proprietaire.dateNaissance} />
+                      <InfoRow label="Nationalité" value={proprietaire.nationalite} />
+                      <InfoRow label="Numéro fiscal" value={proprietaire.numeroFiscal} />
+                      <InfoRow
+                        label="Résident fiscal français"
+                        value={proprietaire.residentFiscalFrancais ? "Oui" : "Non"}
+                      />
+                      {proprietaire.paysResidenceFiscale && (
+                        <InfoRow
+                          label="Pays de résidence fiscale"
+                          value={proprietaire.paysResidenceFiscale}
+                        />
+                      )}
+                    </>
+                  )}
+  
+                  {proprietaire.typeProprietaire === "personne_morale" && (
+                    <>
+                      <InfoRow label="Raison sociale" value={proprietaire.raisonSociale} />
+                      <InfoRow label="Forme juridique" value={proprietaire.formeJuridique} />
+                      <InfoRow label="SIREN" value={proprietaire.siren} />
+                      <InfoRow label="SIRET" value={proprietaire.siret} />
+                      {proprietaire.villeImmatriculation && (
+                        <InfoRow
+                          label="Ville d'immatriculation"
+                          value={proprietaire.villeImmatriculation}
+                        />
+                      )}
+                      {proprietaire.capitalSocial !== undefined && (
+                        <InfoRow
+                          label="Capital social"
+                          value={`${proprietaire.capitalSocial.toLocaleString("fr-FR")} €`}
+                        />
+                      )}
+                      {proprietaire.dateCreation && (
+                        <InfoRow label="Date de création" value={proprietaire.dateCreation} />
+                      )}
+                    </>
+                  )}
+                </div>
+              </SectionCard>
+  
+              {/* Représentant légal (personne morale) */}
+              {proprietaire.typeProprietaire === "personne_morale" && (
+                <SectionCard>
+                  <SectionTitle emoji="👤" title="Représentant légal" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <InfoRow label="Civilité" value={proprietaire.representantLegal.civilite} />
+                    <InfoRow label="Nom" value={proprietaire.representantLegal.nom} />
+                    <InfoRow label="Prénom" value={proprietaire.representantLegal.prenom} />
+                    <InfoRow label="Fonction" value={proprietaire.representantLegal.fonction} />
+                    <InfoRow label="Téléphone" value={proprietaire.representantLegal.telephone} />
+                    <InfoRow label="E-mail" value={proprietaire.representantLegal.email} />
+                  </div>
+                </SectionCard>
+              )}
+  
+              {/* Adresse */}
+              <SectionCard>
+                <SectionTitle emoji="🏠" title="Adresse" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <InfoRow
+                    label="Voie"
+                    value={`${proprietaire.adresse.numeroVoie} ${proprietaire.adresse.typeVoie} ${proprietaire.adresse.nomVoie}`}
+                  />
+                  {proprietaire.adresse.complementAdresse && (
+                    <InfoRow
+                      label="Complément"
+                      value={proprietaire.adresse.complementAdresse}
+                    />
+                  )}
+                  <InfoRow label="Code postal" value={proprietaire.adresse.codePostal} />
+                  <InfoRow label="Ville" value={proprietaire.adresse.ville} />
+                  <InfoRow label="Département" value={proprietaire.adresse.departement} />
+                  <InfoRow label="Région" value={proprietaire.adresse.region} />
+                  <InfoRow label="Pays" value={proprietaire.adresse.pays} />
+                </div>
+              </SectionCard>
+  
+              {/* Contact */}
+              <SectionCard>
+                <SectionTitle emoji="📞" title="Contact" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <InfoRow label="Téléphone principal" value={proprietaire.telephonePrincipal} />
+                  {proprietaire.telephoneSecondaire && (
+                    <InfoRow label="Téléphone secondaire" value={proprietaire.telephoneSecondaire} />
+                  )}
+                  <InfoRow label="E-mail" value={proprietaire.email} />
+                </div>
+              </SectionCard>
+            </>
+          )}
+  
+          {/* ── ONGLET BIENS ── */}
+          {onglet === "biens" && (
+            <SectionCard>
+              <SectionTitle emoji="🏠" title="Biens associés" />
+              {biensAssocies.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-3xl mb-2">🏠</p>
+                  <p className="text-sm font-bold" style={{ color: "#94a3b8" }}>
+                    Aucun bien associé à ce propriétaire
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {biensAssocies.map((bien) => (
+                    <div
+                      key={bien.id}
+                      className="p-4 rounded-2xl"
+                      style={{ backgroundColor: "#f8fafc" }}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-extrabold" style={{ color: "#1e293b" }}>
+                            {bien.nom}
+                          </p>
+                          <p className="text-xs mt-0.5" style={{ color: "#64748b" }}>
+                            {bien.reference} • {getTypeActifLabel(bien.typeActif)}
+                          </p>
+                          <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
+                            {bien.adresse}
+                          </p>
+                        </div>
+                        <StatutActifBadge statut={bien.statut} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          )}
+  
+          {/* ── ONGLET DOCUMENTS ── */}
+          {onglet === "documents" && (
+            <SectionCard>
+              <SectionTitle emoji="📎" title="Documents" />
+              {proprietaire.documents.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-3xl mb-2">📎</p>
+                  <p className="text-sm font-bold" style={{ color: "#94a3b8" }}>
+                    Aucun document enregistré
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {proprietaire.documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-2xl"
+                      style={{ backgroundColor: "#f8fafc" }}
+                    >
+                      <div>
+                        <p className="text-sm font-bold" style={{ color: "#1e293b" }}>
+                          📄 {doc.nom}
+                        </p>
+                        <p className="text-xs" style={{ color: "#94a3b8" }}>
+                          {doc.obligatoire ? "Obligatoire" : "Facultatif"}
+                          {doc.dateAjout ? ` • Ajouté le ${doc.dateAjout}` : ""}
+                        </p>
+                      </div>
+                      {doc.fichier ? (
+                        <span
+                          className="px-3 py-1 rounded-full text-xs font-bold self-start sm:self-auto"
+                          style={{ backgroundColor: "#dcfce7", color: "#166534" }}
+                        >
+                          ✓ Chargé
+                        </span>
+                      ) : (
+                        <span
+                          className="px-3 py-1 rounded-full text-xs font-bold self-start sm:self-auto"
+                          style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
+                        >
+                          En attente
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          )}
+  
+          {/* ── ONGLET HISTORIQUE ── */}
+          {onglet === "historique" && (
+            <SectionCard>
+              <SectionTitle emoji="🕐" title="Historique des modifications" />
+              {proprietaire.historique.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-3xl mb-2">🕐</p>
+                  <p className="text-sm font-bold" style={{ color: "#94a3b8" }}>
+                    Aucune modification enregistrée
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {proprietaire.historique.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-2xl"
+                      style={{ backgroundColor: "#f8fafc" }}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
+                        <p className="text-xs font-extrabold" style={{ color: "#1e293b" }}>
+                          {item.champ}
+                        </p>
+                        <p className="text-xs" style={{ color: "#94a3b8" }}>
+                          {item.date} à {item.heure} • {item.utilisateur}
+                        </p>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2 text-xs">
+                        <span
+                          className="px-2 py-1 rounded-xl"
+                          style={{ backgroundColor: "#fef2f2", color: "#ef4444" }}
+                        >
+                          Avant : {item.ancienneValeur}
+                        </span>
+                        <span className="hidden sm:flex items-center" style={{ color: "#94a3b8" }}>
+                          →
+                        </span>
+                        <span
+                          className="px-2 py-1 rounded-xl"
+                          style={{ backgroundColor: "#dcfce7", color: "#166534" }}
+                        >
+                          Après : {item.nouvelleValeur}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
           )}
         </div>
       </div>
-
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
-          <input
-            value={recherche}
-            onChange={event => setRecherche(event.target.value)}
-            placeholder="Rechercher par nom, référence ou e-mail..."
-            className="flex-1 px-4 py-3 rounded-2xl text-sm border outline-none"
-            style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}
-          />
-
-          <button
-            onClick={() => setShowArchives(value => !value)}
-            className="px-4 py-3 rounded-2xl text-xs font-bold border-2"
-            style={{
-              borderColor: showArchives ? "#f97316" : "#e2e8f0",
-              backgroundColor: showArchives ? "#fff7ed" : "#fff",
-              color: showArchives ? "#f97316" : "#64748b",
-            }}
-          >
-            {showArchives ? "Masquer archives" : "Afficher archives"}
-          </button>
-        </div>
-
-        {proprietairesFiltres.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-5xl mb-3">👥</div>
-
-            <p className="font-bold text-base" style={{ color: "#1e293b" }}>
-              Aucun propriétaire trouvé
-            </p>
-
-            <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
-              Créez votre premier profil propriétaire.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {proprietairesFiltres.map(proprietaire => {
-              const biensDuProprietaire = biensAssocies.filter(
-                actif => actif.proprietaireId === proprietaire.id
-              );
-
-              return (
-                <button
-                  key={proprietaire.id}
-                  onClick={() => onSelect(proprietaire)}
-                  className="w-full bg-white rounded-3xl p-4 shadow-sm hover:shadow-md transition text-left"
-                >
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl"
-                        style={{
-                          background:
-                            proprietaire.typeProprietaire === "personne_physique"
-                              ? "linear-gradient(135deg,#f97316,#fb923c)"
-                              : "linear-gradient(135deg,#8b5cf6,#a78bfa)",
-                        }}
-                      >
-                        {proprietaire.typeProprietaire === "personne_physique"
-                          ? "👤"
-                          : "🏢"}
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p
-                            className="font-extrabold text-sm"
-                            style={{ color: "#1e293b" }}
-                          >
-                            {getNomAffichage(proprietaire)}
-                          </p>
-
-                          <StatutBadge statut={proprietaire.statut} />
-                        </div>
-
-                        <p className="text-xs" style={{ color: "#94a3b8" }}>
-                          {proprietaire.reference} ·{" "}
-                          {getTypeProprietaireLabel(
-                            proprietaire.typeProprietaire
-                          )}
-                        </p>
-
-                        <p className="text-xs mt-0.5" style={{ color: "#cbd5e1" }}>
-                          {proprietaire.email}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-xs font-bold" style={{ color: "#64748b" }}>
-                        {biensDuProprietaire.length} actif(s) associé(s)
-                      </p>
-
-                      <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
-                        {proprietaire.adresse.ville}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// MODULE PRINCIPAL
-// ============================================================
-export default function ModuleProprietaires() {
-  const [view, setView] = useState<ViewState>({ name: "liste" });
-  const [proprietaires, setProprietaires] =
-    useState<Proprietaire[]>(mockProprietaires);
-
-  const biensAssocies = mockBiensAssocies;
-
-  const limiteAtteinte = useMemo(() => {
-    if (mockAbonnement.illimite) return false;
-
-    const proprietairesActifs = proprietaires.filter(
-      proprietaire => proprietaire.statut !== "archive"
     );
-
-    return proprietairesActifs.length >= mockAbonnement.limiteBiens;
-  }, [proprietaires]);
-
-  const getBiensAssociesProprietaire = (proprietaireId: string) => {
-    return biensAssocies.filter(actif => actif.proprietaireId === proprietaireId);
-  };
-
-  const refreshSelectedProprietaire = (proprietaire: Proprietaire) => {
-    const fresh = proprietaires.find(item => item.id === proprietaire.id);
-
-    if (fresh) {
-      setView({ name: "detail", proprietaire: fresh });
-    } else {
-      setView({ name: "liste" });
-    }
-  };
-
-  const saveProprietaire = (proprietaire: Proprietaire) => {
-    setProprietaires(prev => {
-      const exists = prev.some(item => item.id === proprietaire.id);
-
-      if (exists) {
-        return prev.map(item =>
-          item.id === proprietaire.id ? proprietaire : item
-        );
-      }
-
-      return [...prev, proprietaire];
-    });
-
-    setView({ name: "liste" });
-  };
-
-  const deleteProprietaire = (proprietaire: Proprietaire) => {
-    const actifs = getBiensAssociesProprietaire(proprietaire.id);
-
-    if (actifs.length > 0) {
-      alert(
-        "Ce propriétaire est actuellement associé à un ou plusieurs biens et ne peut pas être supprimé."
-      );
-      return;
-    }
-
-    setProprietaires(prev => prev.filter(item => item.id !== proprietaire.id));
-    setView({ name: "liste" });
-  };
-
-  const archiveProprietaire = (proprietaire: Proprietaire) => {
-    const updated: Proprietaire = {
-      ...proprietaire,
-      statut: "archive",
-      updatedAt: getToday(),
-      historique: [
-        ...proprietaire.historique,
-        {
-          id: `hist-${Date.now()}`,
-          date: getToday(),
-          heure: getNowTime(),
-          utilisateur: "Utilisateur connecté",
-          champ: "Statut",
-          ancienneValeur: proprietaire.statut,
-          nouvelleValeur: "archive",
-        },
-      ],
+  }
+  
+  // ============================================================
+  // COMPOSANT PRINCIPAL
+  // ============================================================
+  export default function ListeProprietaires() {
+    const [proprietaires, setProprietaires] = useState<Proprietaire[]>(mockProprietaires);
+    const [view, setView] = useState<ViewState>({ name: "liste" });
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filterType, setFilterType] = useState<TypeProprietaire | "tous">("tous");
+    const [filterStatut, setFilterStatut] = useState<StatutProprietaire | "tous">("tous");
+  
+    const getBiensAssociesProprietaire = (proprietaireId: string) =>
+      mockBiensAssocies.filter((b) => b.proprietaireId === proprietaireId);
+  
+    const proprietairesFiltres = useMemo(() => {
+      return proprietaires.filter((p) => {
+        const nom = getNomAffichage(p).toLowerCase();
+        const matchSearch = nom.includes(searchQuery.toLowerCase()) ||
+          p.reference.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchType = filterType === "tous" || p.typeProprietaire === filterType;
+        const matchStatut = filterStatut === "tous" || p.statut === filterStatut;
+        return matchSearch && matchType && matchStatut;
+      });
+    }, [proprietaires, searchQuery, filterType, filterStatut]);
+  
+    const saveProprietaire = (updated: Proprietaire) => {
+      setProprietaires((prev) => {
+        const exists = prev.find((p) => p.id === updated.id);
+        if (exists) {
+          return prev.map((p) => (p.id === updated.id ? updated : p));
+        }
+        return [...prev, updated];
+      });
+      setView({ name: "detail", proprietaire: updated });
     };
-
-    setProprietaires(prev =>
-      prev.map(item => (item.id === proprietaire.id ? updated : item))
-    );
-
-    setView({ name: "liste" });
-  };
-
-  if (view.name === "choix") {
-    return (
-      <ChoixTypeProprietaire
-        onRetour={() => setView({ name: "liste" })}
-        onChoix={type => {
-          if (type === "personne_physique") {
-            setView({ name: "creation_physique" });
-          } else {
-            setView({ name: "creation_morale" });
-          }
-        }}
-      />
-    );
-  }
-
-  if (view.name === "creation_physique") {
-    return (
-      <FormProprietairePhysique
-        reference={generateReferenceProprietaire(proprietaires.length)}
-        onSave={saveProprietaire}
-        onCancel={() => setView({ name: "choix" })}
-      />
-    );
-  }
-
-  if (view.name === "creation_morale") {
-    return (
-      <FormProprietaireMorale
-        reference={generateReferenceProprietaire(proprietaires.length)}
-        onSave={saveProprietaire}
-        onCancel={() => setView({ name: "choix" })}
-      />
-    );
-  }
-
-  if (view.name === "edition") {
-    const biensDuProprietaire = getBiensAssociesProprietaire(
-      view.proprietaire.id
-    );
-
-    if (view.proprietaire.typeProprietaire === "personne_physique") {
+  
+    const deleteProprietaire = (id: string) => {
+      setProprietaires((prev) => prev.filter((p) => p.id !== id));
+      setView({ name: "liste" });
+    };
+  
+    const archiveProprietaire = (proprietaire: Proprietaire) => {
+      const updated: Proprietaire = {
+        ...proprietaire,
+        statut: "archive",
+        updatedAt: getToday(),
+      };
+      saveProprietaire(updated);
+    };
+  
+    const refreshSelectedProprietaire = (original: Proprietaire) => {
+      const current = proprietaires.find((p) => p.id === original.id) || original;
+      setView({ name: "detail", proprietaire: current });
+    };
+  
+    const nextReference = generateReferenceProprietaire(proprietaires.length);
+  
+    // ── VUE CHOIX ──
+    if (view.name === "choix") {
       return (
-        <FormProprietairePhysique
-          reference={view.proprietaire.reference}
-          initial={view.proprietaire}
-          hasAssociatedAssets={biensDuProprietaire.length > 0}
-          onSave={saveProprietaire}
-          onCancel={() => refreshSelectedProprietaire(view.proprietaire)}
+        <ChoixTypeProprietaire
+          onRetour={() => setView({ name: "liste" })}
+          onChoix={(type) => {
+            if (type === "personne_physique") setView({ name: "creation_physique" });
+            else setView({ name: "creation_morale" });
+          }}
         />
       );
     }
-
-    return (
-      <FormProprietaireMorale
-        reference={view.proprietaire.reference}
-        initial={view.proprietaire}
-        hasAssociatedAssets={biensDuProprietaire.length > 0}
-        onSave={saveProprietaire}
-        onCancel={() => refreshSelectedProprietaire(view.proprietaire)}
-      />
-    );
-  }
-
-  if (view.name === "detail") {
-    const biensDuProprietaire = getBiensAssociesProprietaire(
-      view.proprietaire.id
-    );
-
-    return (
-      <VueDetailProprietaire
-        proprietaire={view.proprietaire}
-        biensAssocies={biensDuProprietaire}
-        onBack={() => setView({ name: "liste" })}
-        onEdit={() =>
-          setView({ name: "edition", proprietaire: view.proprietaire })
-        }
-        onDelete={() => deleteProprietaire(view.proprietaire)}
-        onArchive={() => archiveProprietaire(view.proprietaire)}
-        onOpenActif={actif => {
-          alert(
-            `Navigation vers le module Bien : ${actif.reference} — ${actif.nom}`
-          );
-        }}
-      />
-    );
-  }
-
-  return (
-    <VueListeProprietaires
-      proprietaires={proprietaires}
-      biensAssocies={biensAssocies}
-      limiteAtteinte={limiteAtteinte}
-      onAdd={() => {
-        if (!limiteAtteinte) {
-          setView({ name: "choix" });
-        }
-      }}
-      onSelect={proprietaire =>
-        setView({ name: "detail", proprietaire })
+  
+    // ── VUE CRÉATION PHYSIQUE ──
+    if (view.name === "creation_physique") {
+      return (
+        <WizardProprietairePhysique
+          reference={nextReference}
+          onSave={saveProprietaire}
+          onCancel={() => setView({ name: "choix" })}
+        />
+      );
+    }
+  
+    // ── VUE CRÉATION MORALE ──
+    if (view.name === "creation_morale") {
+      return (
+        <WizardProprietaireMorale
+          reference={nextReference}
+          onSave={saveProprietaire}
+          onCancel={() => setView({ name: "choix" })}
+        />
+      );
+    }
+  
+    // ── VUE DÉTAIL ──
+    if (view.name === "detail") {
+      const biensDuProprietaire = getBiensAssociesProprietaire(view.proprietaire.id);
+      const currentProprietaire =
+        proprietaires.find((p) => p.id === view.proprietaire.id) || view.proprietaire;
+  
+      return (
+        <DetailProprietaire
+          proprietaire={currentProprietaire}
+          biensAssocies={biensDuProprietaire}
+          onBack={() => setView({ name: "liste" })}
+          onEdit={() => setView({ name: "edition", proprietaire: currentProprietaire })}
+          onDelete={() => deleteProprietaire(currentProprietaire.id)}
+          onArchive={() => archiveProprietaire(currentProprietaire)}
+        />
+      );
+    }
+  
+    // ── VUE ÉDITION ──
+    if (view.name === "edition") {
+      const biensDuProprietaire = getBiensAssociesProprietaire(view.proprietaire.id);
+  
+      if (view.proprietaire.typeProprietaire === "personne_physique") {
+        return (
+          <WizardProprietairePhysique
+            reference={view.proprietaire.reference}
+            initial={view.proprietaire}
+            hasAssociatedAssets={biensDuProprietaire.length > 0}
+            onSave={saveProprietaire}
+            onCancel={() => refreshSelectedProprietaire(view.proprietaire)}
+          />
+        );
       }
-    />
-  );
-}
+  
+      if (view.proprietaire.typeProprietaire === "personne_morale") {
+        return (
+          <WizardProprietaireMorale
+            reference={view.proprietaire.reference}
+            initial={view.proprietaire}
+            hasAssociatedAssets={biensDuProprietaire.length > 0}
+            onSave={saveProprietaire}
+            onCancel={() => refreshSelectedProprietaire(view.proprietaire)}
+          />
+        );
+      }
+    }
+  
+    // ── VUE LISTE ──
+    const dashboardCards = [
+      {
+        icon: "👥",
+        value: proprietaires.length,
+        label: "Total des propriétaires",
+        color: "linear-gradient(135deg,#f97316,#fb923c)",
+      },
+      {
+        icon: "✅",
+        value: proprietaires.filter((p) => p.statut === "actif").length,
+        label: "Propriétaires actifs",
+        color: "linear-gradient(135deg,#22c55e,#4ade80)",
+      },
+      {
+        icon: "👤",
+        value: proprietaires.filter((p) => p.typeProprietaire === "personne_physique").length,
+        label: "Personnes physiques",
+        color: "linear-gradient(135deg,#ec4899,#f472b6)",
+      },
+      {
+        icon: "🏢",
+        value: proprietaires.filter((p) => p.typeProprietaire === "personne_morale").length,
+        label: "Personnes morales",
+        color: "linear-gradient(135deg,#8b5cf6,#a78bfa)",
+      },
+    ];
+
+    return (
+      <div
+        className="min-h-screen"
+        style={{ backgroundColor: "#f8fafc", fontFamily: inter.style.fontFamily }}
+      >
+        <header
+          className="px-4 sm:px-6 py-5"
+          style={{ background: "linear-gradient(135deg,#fff7ed,#fff)" }}
+        >
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
+              <div>
+                <h1 className="text-2xl font-black" style={{ color: "#1e293b" }}>
+                  👥 Propriétaires
+                </h1>
+                <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
+                  Référentiel officiel des bailleurs de la plateforme.
+                </p>
+              </div>
+              <button
+                onClick={() => setView({ name: "choix" })}
+                className="px-5 py-2.5 rounded-2xl text-white text-sm font-extrabold shadow-lg transition hover:opacity-90"
+                style={{ background: "linear-gradient(135deg,#f97316,#fb923c)" }}
+              >
+                + Nouveau propriétaire
+              </button>
+            </div>
+
+            <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {dashboardCards.map((card) => (
+                <article
+                  key={card.label}
+                  className="rounded-3xl p-4 text-white min-h-[126px] flex flex-col justify-between"
+                  style={{ background: card.color, boxShadow: "0 12px 24px rgba(30,41,59,0.12)" }}
+                >
+                  <div className="text-2xl leading-none">{card.icon}</div>
+                  <div>
+                    <p className="text-2xl font-black leading-none tracking-tight">{card.value}</p>
+                    <p className="text-xs font-bold mt-2 opacity-90">{card.label}</p>
+                  </div>
+                </article>
+              ))}
+            </section>
+          </div>
+        </header>
+
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-5">
+          <section className="bg-white rounded-3xl p-4 shadow-sm mb-5" style={{ border: "1px solid #e2e8f0" }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input
+                type="text"
+                placeholder="Rechercher un nom, une référence…"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="w-full px-4 py-2.5 rounded-2xl text-sm border outline-none"
+                style={{ borderColor: "#e2e8f0", backgroundColor: "#fff", fontFamily: inter.style.fontFamily }}
+              />
+              <select
+                value={filterType}
+                onChange={(event) => setFilterType(event.target.value as TypeProprietaire | "tous")}
+                className="w-full px-4 py-2.5 rounded-2xl text-sm border outline-none"
+                style={{ borderColor: "#e2e8f0", backgroundColor: "#fff", fontFamily: inter.style.fontFamily }}
+              >
+                <option value="tous">Tous les types</option>
+                <option value="personne_physique">Personnes physiques</option>
+                <option value="personne_morale">Personnes morales</option>
+              </select>
+              <select
+                value={filterStatut}
+                onChange={(event) => setFilterStatut(event.target.value as StatutProprietaire | "tous")}
+                className="w-full px-4 py-2.5 rounded-2xl text-sm border outline-none"
+                style={{ borderColor: "#e2e8f0", backgroundColor: "#fff", fontFamily: inter.style.fontFamily }}
+              >
+                <option value="tous">Tous les statuts</option>
+                <option value="actif">Actifs</option>
+                <option value="archive">Archivés</option>
+              </select>
+            </div>
+          </section>
+
+          {proprietairesFiltres.length === 0 ? (
+            <section className="bg-white rounded-3xl p-10 text-center shadow-sm" style={{ border: "1px solid #e2e8f0" }}>
+              <p className="text-5xl mb-3">👥</p>
+              <p className="text-base font-extrabold" style={{ color: "#1e293b" }}>
+                Aucun propriétaire trouvé
+              </p>
+              <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
+                Modifiez vos filtres ou créez un nouveau propriétaire.
+              </p>
+            </section>
+          ) : (
+            <section className="space-y-3">
+              {proprietairesFiltres.map((proprietaire) => {
+                const isPhysical = proprietaire.typeProprietaire === "personne_physique";
+                const relatedAssets = getBiensAssociesProprietaire(proprietaire.id);
+                return (
+                  <button
+                    key={proprietaire.id}
+                    type="button"
+                    onClick={() => setView({ name: "detail", proprietaire })}
+                    className="w-full text-left bg-white rounded-3xl p-4 sm:p-5 shadow-sm hover:shadow-md transition"
+                    style={{ border: "1px solid #e2e8f0" }}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div
+                          className="w-14 h-14 rounded-3xl flex items-center justify-center text-2xl shrink-0"
+                          style={{
+                            background: isPhysical
+                              ? "linear-gradient(135deg,#f97316,#fb923c)"
+                              : "linear-gradient(135deg,#8b5cf6,#a78bfa)",
+                            boxShadow: "0 8px 16px rgba(30,41,59,0.14)",
+                          }}
+                        >
+                          {isPhysical ? "👤" : "🏢"}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-base font-black truncate" style={{ color: "#1e293b" }}>
+                              {getNomAffichage(proprietaire)}
+                            </p>
+                            <StatutBadge statut={proprietaire.statut} />
+                          </div>
+                          <p className="text-xs font-bold mt-1" style={{ color: "#64748b" }}>
+                            {getTypeProprietaireLabel(proprietaire.typeProprietaire)} · {proprietaire.reference}
+                          </p>
+                          <p className="text-xs mt-1 truncate" style={{ color: "#94a3b8" }}>
+                            {getAdresseComplete(proprietaire.adresse)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="hidden sm:block text-right">
+                          <p className="text-xs font-bold" style={{ color: "#94a3b8" }}>Biens associés</p>
+                          <p className="text-sm font-black" style={{ color: "#1e293b" }}>{relatedAssets.length}</p>
+                        </div>
+                        <span
+                          className="px-3 py-2 rounded-2xl text-xs font-extrabold"
+                          style={{ backgroundColor: "#fff7ed", color: "#f97316" }}
+                        >
+                          Voir la fiche →
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </section>
+          )}
+        </main>
+      </div>
+    );
+  }
